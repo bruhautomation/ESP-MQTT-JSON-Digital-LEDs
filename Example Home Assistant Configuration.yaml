@@ -1,0 +1,74 @@
+mqtt:
+  broker: your.mqtt.ip.address
+  port: 1883
+  client_id: home-assistant-1
+  username: YOURUSERNAME
+  password: YOURPASSWORD
+
+light:
+  - platform: mqtt
+    name: "Porch LEDs"
+    command_topic: "bruh/mqttstrip/setpower"
+    state_topic: "bruh/mqttstrip/setpowerpub"
+    rgb_state_topic: "bruh/mqttstrip/setcolorpub"
+    rgb_command_topic: "bruh/mqttstrip/setcolor"
+    brightness_state_topic: "bruh/mqttstrip/setbrightnesspub"
+    brightness_command_topic: "bruh/mqttstrip/setbrightness"
+    optimistic: false
+
+input_select:
+  porch_led_effect:
+    name: Porch LED Effect
+    options:
+     - "BPM"
+     - "Candy Cane"
+     - "Confetti"
+     - "Cyclon Rainbow"
+     - "Dots"
+     - "Fire"
+     - "Glitter"
+     - "Juggle"
+     - "Lightning"
+     - "Noise"
+     - "Police All"
+     - "Police One"
+     - "Rainbow"
+     - "Rainbow with Glitter"
+     - "Ripple"
+     - "Sinelon"
+     - "Solid"
+     - "Twinkle"
+    initial: "Solid"
+
+input_slider:
+  porch_animation_speed:
+    name: Porch Animation Speed
+    initial: 150
+    min: 1
+    max: 150
+    step: 10
+
+automation: 
+  - alias: "Porch Input Effect"
+    initial_state: True
+    hide_entity: False
+    trigger:
+      - platform: state
+        entity_id: input_select.porch_led_effect
+    action:
+      - service: mqtt.publish
+         data_template:
+          topic: "bruh/mqttstrip/seteffect"
+          payload: '{{ trigger.to_state.state | string }}'
+
+  - alias: "Porch Animation Speed"
+    initial_state: True
+    hide_entity: False
+    trigger:
+      - platform: state
+        entity_id: input_slider.porch_animation_speed
+    action:
+      - service: mqtt.publish
+        data_template:
+          topic: "bruh/mqttstrip/setanimationspeed"
+          payload: '{{ trigger.to_state.state | int }}'
