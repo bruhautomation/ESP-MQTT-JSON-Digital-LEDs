@@ -6,10 +6,10 @@ The code covered in this repository allows controlling the strip via a tradition
 
 
 #### Demo Video
-Coming Soon!
+[![Demo Video](http://i.imgur.com/cpW2JAX.png)](https://www.youtube.com/watch?v=DQZ4x6Z3678 "Demo - RGB Digital LED Strip controlled using ESP, MQTT, and Home Assistant")
 
 #### Tutorial Video
-Coming Soon!
+[![Tutorial Video](http://i.imgur.com/9UMl8Xo.jpg)](https://www.youtube.com/watch?v=9KI36GTgwuQ "The BEST Digital LED Strip Light Tutorial - DIY, WIFI-Controllable via ESP, MQTT, and Home Assistant")
 
 #### Parts List
 - [Digital RGB Leds] (http://geni.us/8mBml)
