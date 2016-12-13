@@ -12,7 +12,18 @@ Coming Soon!
 Coming Soon!
 
 #### Parts List
-Coming Soon!
+- [Digital RGB Leds] (http://geni.us/8mBml)
+- [NodeMCU] (http://geni.us/4pVoT)
+- [Aluminum Mounting Channel/Diffuser]  (http://geni.us/JBDhv7)
+- [2v to 5v Step Down] (http://geni.us/PghhV9)
+- [12V 10amp Power Supply] (http://geni.us/jfxBXRd)
+- [Strip Connector] (http://geni.us/OL7tHv)
+- [Logic Level Shifter] (http://geni.us/4hJAyy)
+- [20 Guage Wire] (http://geni.us/2MBYAXF)
+- [Cable Chase] (http://geni.us/lFqD)
+- [Project Box] (http://geni.us/gdyF)
+- [Header Wires] (http://geni.us/GniKAX)
+
 
 #### Wiring Diagram
 ![alt text](https://github.com/bruhautomation/ESP-MQTT-Digital-LEDs/blob/master/ESP%20MQTT%20Digital%20LEDs%20Wiring%20Diagram.png?raw=true "Wiring Diagram")
