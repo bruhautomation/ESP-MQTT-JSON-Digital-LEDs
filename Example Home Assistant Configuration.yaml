@@ -57,7 +57,7 @@ automation:
         entity_id: input_select.porch_led_effect
     action:
       - service: mqtt.publish
-         data_template:
+        data_template:
           topic: "bruh/mqttstrip/seteffect"
           payload: '{{ trigger.to_state.state | string }}'
 
