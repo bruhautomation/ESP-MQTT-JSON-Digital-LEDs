@@ -23,6 +23,7 @@ The code covered in this repository allows controlling the strip via a tradition
 - [Cable Chase] (http://geni.us/lFqD)
 - [Project Box] (http://geni.us/gdyF)
 - [Header Wires] (http://geni.us/GniKAX)
+- [Power Jacks] (http://geni.us/7Ywdut)
 
 
 #### Wiring Diagram
