@@ -526,7 +526,7 @@ void loop() {
   FastLED.setBrightness(brightness);  //EXECUTE EFFECT COLOR
   FastLED.show();
 
-  if (animationspeed < 150) {  //Sets animation speed based on receieved value
+  if (animationspeed > 0 && animationspeed < 150) {  //Sets animation speed based on receieved value
     FastLED.delay(1000 / animationspeed);
   }
 
