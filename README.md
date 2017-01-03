@@ -15,7 +15,7 @@ The code covered in this repository allows controlling the strip via a tradition
 - [Digital RGB Leds] (http://geni.us/8mBml)
 - [NodeMCU] (http://geni.us/4pVoT)
 - [Aluminum Mounting Channel/Diffuser]  (http://geni.us/JBDhv7)
-- [2v to 5v Step Down] (http://geni.us/PghhV9)
+- [12v to 5v Step Down] (http://geni.us/PghhV9)
 - [12V 10amp Power Supply] (http://geni.us/jfxBXRd)
 - [Strip Connector] (http://geni.us/OL7tHv)
 - [Logic Level Shifter] (http://geni.us/4hJAyy)
