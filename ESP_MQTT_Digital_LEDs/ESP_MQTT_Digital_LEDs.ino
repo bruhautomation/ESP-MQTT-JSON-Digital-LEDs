@@ -617,6 +617,7 @@ void reconnect() {
       client.subscribe(setpowersub);
       client.subscribe(seteffectsub);
       client.subscribe(setanimationspeed);
+      client.publish(setpowerpub, "OFF");
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
