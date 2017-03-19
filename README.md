@@ -12,18 +12,18 @@ The code covered in this repository allows controlling the strip via a tradition
 [![Tutorial Video](http://i.imgur.com/9UMl8Xo.jpg)](https://www.youtube.com/watch?v=9KI36GTgwuQ "The BEST Digital LED Strip Light Tutorial - DIY, WIFI-Controllable via ESP, MQTT, and Home Assistant")
 
 #### Parts List
-- [Digital RGB Leds] (http://geni.us/8mBml)
-- [NodeMCU] (http://geni.us/4pVoT)
-- [Aluminum Mounting Channel/Diffuser]  (http://geni.us/JBDhv7)
-- [12v to 5v Step Down] (http://geni.us/PghhV9)
-- [12V 15amp Power Supply] (http://geni.us/8rKC)
-- [Strip Connector] (http://geni.us/OL7tHv)
-- [Logic Level Shifter] (http://geni.us/4hJAyy)
-- [20 Guage Wire] (http://geni.us/2MBYAXF)
-- [Cable Chase] (http://geni.us/lFqD)
-- [Project Box] (http://geni.us/kZRgaj)
-- [Header Wires] (http://geni.us/GniKAX)
-- [Power Jacks] (http://geni.us/7Ywdut)
+- [Digital RGB Leds](http://geni.us/8mBml)
+- [NodeMCU](http://geni.us/4pVoT)
+- [Aluminum Mounting Channel/Diffuser](http://geni.us/JBDhv7)
+- [12v to 5v Step Down](http://geni.us/PghhV9)
+- [12V 15amp Power Supply](http://geni.us/8rKC)
+- [Strip Connector](http://geni.us/OL7tHv)
+- [Logic Level Shifter](http://geni.us/4hJAyy)
+- [20 Guage Wire](http://geni.us/2MBYAXF)
+- [Cable Chase](http://geni.us/lFqD)
+- [Project Box](http://geni.us/kZRgaj)
+- [Header Wires](http://geni.us/GniKAX)
+- [Power Jacks](http://geni.us/7Ywdut)
 
 
 #### Wiring Diagram
