@@ -10,6 +10,7 @@ This is the code I use for my MQTT LED Strip controlled from Home Assistant. It'
 
 */
 
+#define FASTLED_ALLOW_INTERRUPTS 0 // Helps prevent glitches in longer strips, especially with faster effects (Sinelon, Glitter...)
 
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
