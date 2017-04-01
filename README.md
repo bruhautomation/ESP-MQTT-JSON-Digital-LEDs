@@ -1,4 +1,4 @@
-# ESP MQTT Digital LEDs for Home Assistant's MQTT JSON Light Component
+# ESP MQTT JSON Digital LEDs
 
 This project shows a super easy way to get started using Digital LED strips with [Home Assistant](https://home-assistant.io/), a sick, open-source Home Automation platform that can do just about anything. 
 
