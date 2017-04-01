@@ -6,39 +6,35 @@ mqtt:
   password: YOURPASSWORD
 
 light:
-  - platform: mqtt
-    name: "Porch LEDs"
-    command_topic: "bruh/mqttstrip/setpower"
-    state_topic: "bruh/mqttstrip/setpowerpub"
-    rgb_state_topic: "bruh/mqttstrip/setcolorpub"
-    rgb_command_topic: "bruh/mqttstrip/setcolor"
-    brightness_state_topic: "bruh/mqttstrip/setbrightnesspub"
-    brightness_command_topic: "bruh/mqttstrip/setbrightness"
+  - platform: mqtt_json
+    name: "Porch Strip"
+    state_topic: "bruh/porch"
+    command_topic: "bruh/porch/set"
+    effect: true
+    effect_list:
+       - bpm
+       - candy cane  
+       - confetti  
+       - cyclon rainbow  
+       - dots  
+       - fire  
+       - glitter  
+       - juggle  
+       - lightning
+       - noise  
+       - police all  
+       - police one  
+       - rainbow  
+       - rainbow with glitter  
+       - ripple  
+       - sinelon  
+       - solid  
+       - twinkle  
+    brightness: true
+    flash: true
+    rgb: true
     optimistic: false
-
-input_select:
-  porch_led_effect:
-    name: Porch LED Effect
-    options:
-     - "BPM"
-     - "Candy Cane"
-     - "Confetti"
-     - "Cyclon Rainbow"
-     - "Dots"
-     - "Fire"
-     - "Glitter"
-     - "Juggle"
-     - "Lightning"
-     - "Noise"
-     - "Police All"
-     - "Police One"
-     - "Rainbow"
-     - "Rainbow with Glitter"
-     - "Ripple"
-     - "Sinelon"
-     - "Solid"
-     - "Twinkle"
-    initial: "Solid"
+    qos: 0
 
 input_slider:
   porch_animation_speed:
@@ -49,18 +45,6 @@ input_slider:
     step: 10
 
 automation: 
-  - alias: "Porch Input Effect"
-    initial_state: True
-    hide_entity: False
-    trigger:
-      - platform: state
-        entity_id: input_select.porch_led_effect
-    action:
-      - service: mqtt.publish
-        data_template:
-          topic: "bruh/mqttstrip/seteffect"
-          payload: '{{ trigger.to_state.state | string }}'
-
   - alias: "Porch Animation Speed"
     initial_state: True
     hide_entity: False
@@ -70,5 +54,5 @@ automation:
     action:
       - service: mqtt.publish
         data_template:
-          topic: "bruh/mqttstrip/setanimationspeed"
-          payload: '{{ trigger.to_state.state | int }}'
+          topic: "bruh/porch/set"
+          payload: '{"transition":{{ trigger.to_state.state | int }}}'
