@@ -48,6 +48,7 @@ const char* on_cmd = "ON";
 const char* off_cmd = "OFF";
 const char* effect = "solid";
 String effectString = "solid";
+String oldeffectString = "solid";
 
 
 
