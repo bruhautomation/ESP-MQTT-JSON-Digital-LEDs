@@ -51,12 +51,12 @@ String effectString = "solid";
 
 
 
-/*************************************** FOR JSON ***************************************/
+/****************************************FOR JSON***************************************/
 const int BUFFER_SIZE = JSON_OBJECT_SIZE(10);
 
 
 
-/*********************************** FastLED Definitions ********************************/
+/*********************************** FastLED Defintions ********************************/
 #define NUM_LEDS    186
 #define DATA_PIN    5
 //#define CLOCK_PIN 5
@@ -67,16 +67,17 @@ byte realRed = 0;
 byte realGreen = 0;
 byte realBlue = 0;
 
-byte red = 0;
-byte green = 0;
-byte blue = 0;
+byte red = 255;
+byte green = 255;
+byte blue = 255;
 byte brightness = 255;
 
 
 
-/******************************** GLOBALS for FADE/FLASH *******************************/
+/******************************** GLOBALS for fade/flash *******************************/
 bool stateOn = false;
 bool startFade = false;
+bool onbeforeflash = false;
 unsigned long lastLoop = 0;
 int transitionTime = 0;
 int effectSpeed = 0;
@@ -96,7 +97,7 @@ byte flashBrightness = brightness;
 
 
 
-/********************************** GLOBALS for EFFECTS *******************************/
+/********************************** GLOBALS for EFFECTS ******************************/
 //RAINBOW
 uint8_t thishue = 0;                                          // Starting hue value.
 uint8_t deltahue = 10;
@@ -166,10 +167,10 @@ CRGB leds[NUM_LEDS];
 
 
 
-/************************************ START SETUP **************************************/
+/********************************** START SETUP*****************************************/
 void setup() {
   Serial.begin(115200);
-  Serial.println("TESTING SERIAL MONITOR");
+  //Serial.println("TESTING SERIAL MONITOR");
   FastLED.addLeds<CHIPSET, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS);
 
   setupStripedPalette( CRGB::Red, CRGB::Red, CRGB::White, CRGB::White); //for CANDY CANE
@@ -215,7 +216,7 @@ void setup() {
 
 
 
-/********************************** START SETUP WIFI ****************************************/
+/********************************** START SETUP WIFI*****************************************/
 void setup_wifi() {
 
   delay(10);
@@ -254,7 +255,7 @@ void setup_wifi() {
 
 
 
-/********************************** START CALLBACK *****************************************/
+/********************************** START CALLBACK*****************************************/
 void callback(char* topic, byte* payload, unsigned int length) {
   Serial.print("Message arrived [");
   Serial.print(topic);
@@ -272,13 +273,13 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
 
   if (stateOn) {
-    Serial.println("state on");
 
     realRed = map(red, 0, 255, 0, brightness);
     realGreen = map(green, 0, 255, 0, brightness);
     realBlue = map(blue, 0, 255, 0, brightness);
   }
   else {
+
     realRed = 0;
     realGreen = 0;
     realBlue = 0;
@@ -294,7 +295,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
 
 
-/********************************** START PROCESS JSON *****************************************/
+/********************************** START PROCESS JSON*****************************************/
 bool processJson(char* message) {
   StaticJsonBuffer<BUFFER_SIZE> jsonBuffer;
 
@@ -312,6 +313,7 @@ bool processJson(char* message) {
     else if (strcmp(root["state"], off_cmd) == 0) {
       stateOn = false;
       effectString = "solid";
+      onbeforeflash = false;
     }
   }
 
@@ -347,6 +349,10 @@ bool processJson(char* message) {
   else { // Not flashing
     flash = false;
 
+    if (stateOn) {   //if the light is turned on and the light isn't flashing
+      onbeforeflash = true;
+    }
+
     if (root.containsKey("color")) {
       red = root["color"]["r"];
       green = root["color"]["g"];
@@ -360,7 +366,6 @@ bool processJson(char* message) {
     if (root.containsKey("effect")) {
       effect = root["effect"];
       effectString = effect;
-      Serial.println("setting effectString to");
       Serial.print(effectString);
       twinklecounter = 0; //manage twinklecounter
     }
@@ -379,7 +384,7 @@ bool processJson(char* message) {
 
 
 
-/********************************** START SEND STATE ****************************************/
+/********************************** START SEND STATE*****************************************/
 void sendState() {
   StaticJsonBuffer<BUFFER_SIZE> jsonBuffer;
 
@@ -403,7 +408,7 @@ void sendState() {
 
 
 
-/********************************** START RECONNECT *****************************************/
+/********************************** START RECONNECT*****************************************/
 void reconnect() {
   // Loop until we're reconnected
   while (!client.connected()) {
@@ -426,7 +431,7 @@ void reconnect() {
 
 
 
-/********************************** START SET COLOR *****************************************/
+/********************************** START Set Color*****************************************/
 void setColor(int inR, int inG, int inB) {
   for (int i = 0; i < NUM_LEDS; i++) {
     leds[i].red   = inR;
@@ -447,20 +452,20 @@ void setColor(int inR, int inG, int inB) {
 
 
 
-/********************************** START MAIN LOOP ****************************************/
+/********************************** START MAIN LOOP*****************************************/
 void loop() {
 
   if (!client.connected()) {
     reconnect();
   }
-  
+
   client.loop();
 
   ArduinoOTA.handle();
 
 
   //EFFECT BPM
-  if (effectString == "bpm") {                                  
+  if (effectString == "bpm") {
     uint8_t BeatsPerMinute = 62;
     CRGBPalette16 palette = PartyColors_p;
     uint8_t beat = beatsin8( BeatsPerMinute, 64, 255);
@@ -725,19 +730,19 @@ void loop() {
 
   EVERY_N_MILLISECONDS(10) {
 
-    nblendPaletteTowardPalette(currentPalette, targetPalette, maxChanges);  // FOR NOISE ANIMATION
+    nblendPaletteTowardPalette(currentPalette, targetPalette, maxChanges);  // FOR NOISE ANIMATIon
     {
       gHue++;
     }
 
     //EFFECT NOISE
     if (effectString == "noise") {
-      for (int i = 0; i < NUM_LEDS; i++) {                                     // Just one loop to fill up the LED array as all of the pixels change.
+      for (int i = 0; i < NUM_LEDS; i++) {                                     // Just onE loop to fill up the LED array as all of the pixels change.
         uint8_t index = inoise8(i * scale, dist + i * scale) % 255;            // Get a value from the noise function. I'm using both x and y axis.
         leds[i] = ColorFromPalette(currentPalette, index, 255, LINEARBLEND);   // With that value, look up the 8 bit colour palette value and assign it to the current LED.
       }
       dist += beatsin8(10, 1, 4);                                              // Moving along the distance (that random number we started out with). Vary it a bit with a sine wave.
-
+      // In some sketches, I've used millis() instead of an incremented counter. Works a treat.
       if (transitionTime == 0 or transitionTime == NULL) {
         transitionTime = 0;
       }
@@ -799,7 +804,14 @@ void loop() {
     }
     else {
       flash = false;
-      setColor(realRed, realGreen, realBlue);
+      if (effectString == "solid" && onbeforeflash) { //keeps light off after flash if light was originally off
+        setColor(realRed, realGreen, realBlue);
+      }
+      else {
+        stateOn = false;
+        setColor(0, 0, 0);
+        sendState();
+      }
     }
   }
 
@@ -926,7 +938,7 @@ void setupStripedPalette( CRGB A, CRGB AB, CRGB B, CRGB BA) {
 
 
 
-/********************************** START FADE ***********************************************/
+/********************************** START FADE************************************************/
 void fadeall() {
   for (int i = 0; i < NUM_LEDS; i++) {
     leds[i].nscale8(250);  //for CYCLon
