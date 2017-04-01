@@ -312,7 +312,6 @@ bool processJson(char* message) {
     }
     else if (strcmp(root["state"], off_cmd) == 0) {
       stateOn = false;
-      effectString = "solid";
       onbeforeflash = false;
     }
   }
@@ -320,6 +319,8 @@ bool processJson(char* message) {
   // If "flash" is included, treat RGB and brightness differently
   if (root.containsKey("flash")) {
     flashLength = (int)root["flash"] * 1000;
+
+    oldeffectString = effectString;
 
     if (root.containsKey("brightness")) {
       flashBrightness = root["brightness"];
@@ -337,6 +338,20 @@ bool processJson(char* message) {
       flashRed = red;
       flashGreen = green;
       flashBlue = blue;
+    }
+
+    if (root.containsKey("effect")) {
+      effect = root["effect"];
+      effectString = effect;
+      Serial.print(effectString);
+      twinklecounter = 0; //manage twinklecounter
+    }
+
+    if (root.containsKey("transition")) {
+      transitionTime = root["transition"];
+    }
+    else if ( effectString == "solid") {
+      transitionTime = 0;
     }
 
     flashRed = map(flashRed, 0, 255, 0, flashBrightness);
@@ -804,7 +819,8 @@ void loop() {
     }
     else {
       flash = false;
-      if (effectString == "solid" && onbeforeflash) { //keeps light off after flash if light was originally off
+      effectString = oldeffectString;
+      if (onbeforeflash) { //keeps light off after flash if light was originally off
         setColor(realRed, realGreen, realBlue);
       }
       else {
@@ -865,7 +881,6 @@ void loop() {
 /**************************** START TRANSITION FADER *****************************************/
 // From https://www.arduino.cc/en/Tutorial/ColorCrossfader
 /* BELOW THIS LINE IS THE MATH -- YOU SHOULDN'T NEED TO CHANGE THIS FOR THE BASICS
-
   The program works like this:
   Imagine a crossfade that moves the red LED from 0-10,
     the green from 0-5, and the blue from 10 to 7, in
@@ -874,18 +889,14 @@ void loop() {
     decrease color values in evenly stepped increments.
     Imagine a + indicates raising a value by 1, and a -
     equals lowering it. Our 10 step fade would look like:
-
     1 2 3 4 5 6 7 8 9 10
   R + + + + + + + + + +
   G   +   +   +   +   +
   B     -     -     -
-
   The red rises from 0 to 10 in ten steps, the green from
   0-5 in 5 steps, and the blue falls from 10 to 7 in three steps.
-
   In the real program, the color percentages are converted to
   0-255 values, and there are 1020 steps (255*4).
-
   To figure out how big a step there should be between one up- or
   down-tick of one of the LED values, we call calculateStep(),
   which calculates the absolute gap between the start and end values,
@@ -1010,10 +1021,15 @@ void addGlitterColor( fract8 chanceOfGlitter, int red, int green, int blue)
 /********************************** START SHOW LEDS ***********************************************/
 void showleds() {
 
-  FastLED.setBrightness(brightness);  //EXECUTE EFFECT COLOR
-  FastLED.show();
-  if (transitionTime > 0 && transitionTime < 130) {  //Sets animation speed based on receieved value
-    FastLED.delay(1000 / transitionTime);
-    //delay(10*transitionTime);
+  if (stateOn) {
+    FastLED.setBrightness(brightness);  //EXECUTE EFFECT COLOR
+    FastLED.show();
+    if (transitionTime > 0 && transitionTime < 130) {  //Sets animation speed based on receieved value
+      FastLED.delay(1000 / transitionTime);
+      //delay(10*transitionTime);
+    }
+  }
+  else {
+    setColor(0, 0, 0);
   }
 }
