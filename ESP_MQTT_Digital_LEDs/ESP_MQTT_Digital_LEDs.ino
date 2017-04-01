@@ -67,9 +67,9 @@ byte realRed = 0;
 byte realGreen = 0;
 byte realBlue = 0;
 
-byte red = 255;
-byte green = 255;
-byte blue = 255;
+byte red = 0;
+byte green = 0;
+byte blue = 0;
 byte brightness = 255;
 
 
