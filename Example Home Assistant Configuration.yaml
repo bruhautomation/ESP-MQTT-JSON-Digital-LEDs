@@ -12,24 +12,24 @@ light:
     command_topic: "bruh/porch/set"
     effect: true
     effect_list:
-       - bpm
-       - candy cane  
-       - confetti  
-       - cyclon rainbow  
-       - dots  
-       - fire  
-       - glitter  
-       - juggle  
-       - lightning
-       - noise  
-       - police all  
-       - police one  
-       - rainbow  
-       - rainbow with glitter  
-       - ripple  
-       - sinelon  
-       - solid  
-       - twinkle  
+      - bpm
+      - candy cane  
+      - confetti  
+      - cyclon rainbow  
+      - dots  
+      - fire  
+      - glitter  
+      - juggle  
+      - lightning
+      - noise  
+      - police all  
+      - police one  
+      - rainbow  
+      - rainbow with glitter  
+      - ripple  
+      - sinelon  
+      - solid  
+      - twinkle  
     brightness: true
     flash: true
     rgb: true
