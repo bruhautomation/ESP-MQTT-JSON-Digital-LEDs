@@ -530,7 +530,7 @@ void loop() {
       // Set the i'th led to red
       leds[i] = CHSV(hue++, 255, 255);
       // Show the leds
-      FastLED.show();
+      showleds();
       // now that we've shown the leds, reset the i'th led to black
       // leds[i] = CRGB::Black;
       fadeall();
@@ -541,7 +541,7 @@ void loop() {
       // Set the i'th led to red
       leds[i] = CHSV(hue++, 255, 255);
       // Show the leds
-      FastLED.show();
+      showleds();
       // now that we've shown the leds, reset the i'th led to black
       // leds[i] = CRGB::Black;
       fadeall();
@@ -619,10 +619,10 @@ void loop() {
       if (flashCounter == 0) dimmer = 5;    // the brightness of the leader is scaled down by a factor of 5
       else dimmer = random8(1, 3);          // return strokes are brighter than the leader
       fill_solid(leds + ledstart, ledlen, CHSV(255, 0, 255 / dimmer));
-      FastLED.show();                       // Show a section of LED's
+      showleds();    // Show a section of LED's
       delay(random8(4, 10));                // each flash only lasts 4-10 milliseconds
       fill_solid(leds + ledstart, ledlen, CHSV(255, 0, 0)); // Clear the section of LED's
-      FastLED.show();
+      showleds();
       if (flashCounter == 0) delay (130);   // longer delay until next flash after the leader
       delay(50 + random8(100));             // shorter delay between strokes
     }
