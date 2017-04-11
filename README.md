@@ -67,7 +67,7 @@ Flash The Light - light.turn_on
 }
 ```
 
-Call Rainbow Effect with Slow Animation Speed - light.turn_off
+Call Rainbow Effect with Slow Animation Speed - light.turn_on
 ```
 {"entity_id":"light.porch_strip",
 "transition":"50",
@@ -79,8 +79,6 @@ Call Rainbow Effect with Slow Animation Speed - light.turn_off
 Fade the Light Off Over 5 Seconds - light.turn_off
 ```
 {"entity_id":"light.porch_strip",
-"transition":"50",
-"brightness":255,
-"effect":"rainbow"
+"transition":"50"
 }
 ```
