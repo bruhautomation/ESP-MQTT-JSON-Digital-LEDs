@@ -54,7 +54,7 @@ String oldeffectString = "solid";
 
 /****************************************FOR JSON***************************************/
 const int BUFFER_SIZE = JSON_OBJECT_SIZE(10);
-#define MQTT_MAX_PACKET_SIZE = 512;
+#define MQTT_MAX_PACKET_SIZE 512;
 
 
 
