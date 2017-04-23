@@ -164,14 +164,13 @@ uint8_t gHue = 0;
 
 WiFiClient espClient;
 PubSubClient client(espClient);
-CRGB leds[NUM_LEDS];
+struct CRGB leds[NUM_LEDS];
 
 
 
 /********************************** START SETUP*****************************************/
 void setup() {
   Serial.begin(115200);
-  //Serial.println("TESTING SERIAL MONITOR");
   FastLED.addLeds<CHIPSET, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS);
 
   setupStripedPalette( CRGB::Red, CRGB::Red, CRGB::White, CRGB::White); //for CANDY CANE
@@ -344,7 +343,6 @@ bool processJson(char* message) {
     if (root.containsKey("effect")) {
       effect = root["effect"];
       effectString = effect;
-      Serial.print(effectString);
       twinklecounter = 0; //manage twinklecounter
     }
 
@@ -382,7 +380,6 @@ bool processJson(char* message) {
     if (root.containsKey("effect")) {
       effect = root["effect"];
       effectString = effect;
-      Serial.print(effectString);
       twinklecounter = 0; //manage twinklecounter
     }
 
@@ -475,6 +472,15 @@ void loop() {
     reconnect();
   }
 
+  if (WiFi.status() != WL_CONNECTED) {
+    delay(1);
+    Serial.print("WIFI Disconnected. Attempting reconnection.");
+    setup_wifi();
+    return;
+  }
+
+
+
   client.loop();
 
   ArduinoOTA.handle();
@@ -524,7 +530,6 @@ void loop() {
   //EFFECT CYCLON RAINBOW
   if (effectString == "cyclon rainbow") {                    //Single Dot Down
     static uint8_t hue = 0;
-    Serial.print("x");
     // First slide the led in one direction
     for (int i = 0; i < NUM_LEDS; i++) {
       // Set the i'th led to red
@@ -593,11 +598,9 @@ void loop() {
 
   //EFFECT JUGGLE
   if (effectString == "juggle" ) {                           // eight colored dots, weaving in and out of sync with each other
-    fadeToBlackBy( leds, NUM_LEDS, 20);
-    byte dothue = 0;
-    for ( int i = 0; i < 8; i++) {
-      leds[beatsin16(i + 7, 0, NUM_LEDS)] |= CRGB(realRed, realGreen, realBlue);
-      dothue += 32;
+    fadeToBlackBy(leds, NUM_LEDS, 20);
+    for (int i = 0; i < 8; i++) {
+      leds[beatsin16(i + 7, 0, NUM_LEDS - 1  )] |= CRGB(realRed, realGreen, realBlue);
     }
     if (transitionTime == 0 or transitionTime == NULL) {
       transitionTime = 130;
@@ -671,7 +674,6 @@ void loop() {
         leds[i] = CHSV(0, 0, 0);
       }
     }
-    Serial.println(transitionTime);
     if (transitionTime == 0 or transitionTime == NULL) {
       transitionTime = 30;
     }
@@ -867,8 +869,6 @@ void loop() {
         if (effectString == "solid") {
           setColor(redVal, grnVal, bluVal); // Write current values to LED pins
         }
-        Serial.print("Loop count: ");
-        Serial.println(loopCount);
         loopCount++;
       }
       else {
@@ -1022,6 +1022,8 @@ void addGlitterColor( fract8 chanceOfGlitter, int red, int green, int blue)
 /********************************** START SHOW LEDS ***********************************************/
 void showleds() {
 
+  delay(1);
+
   if (stateOn) {
     FastLED.setBrightness(brightness);  //EXECUTE EFFECT COLOR
     FastLED.show();
@@ -1030,7 +1032,8 @@ void showleds() {
       //delay(10*transitionTime);
     }
   }
-  else {
+  else if (startFade) {
     setColor(0, 0, 0);
+    startFade = false;
   }
 }
