@@ -2,7 +2,7 @@
 
 This project shows a super easy way to get started using Digital LED strips with [Home Assistant](https://home-assistant.io/), a sick, open-source Home Automation platform that can do just about anything. 
 
-The code covered in this repository utilizies [Home Assistant's MQTT JSON Light Component](https://home-assistant.io/components/light.mqtt_json/) and an ESP8266 microcontroller. 
+The code covered in this repository utilizes [Home Assistant's MQTT JSON Light Component](https://home-assistant.io/components/light.mqtt_json/) and an ESP8266 microcontroller. 
 
 #### Supported Features Include
 - RGB Color Selection
@@ -35,7 +35,7 @@ This code also supports remote uploading to the ESP8266 using Arduino's OTA libr
 - [12V 15amp Power Supply](http://geni.us/8rKC)
 - [Strip Connector](http://geni.us/OL7tHv)
 - [Logic Level Shifter](http://geni.us/4hJAyy)
-- [20 Guage Wire](http://geni.us/2MBYAXF)
+- [20 Gauge Wire](http://geni.us/2MBYAXF)
 - [Cable Chase](http://geni.us/lFqD)
 - [Project Box](http://geni.us/kZRgaj)
 - [Header Wires](http://geni.us/GniKAX)
