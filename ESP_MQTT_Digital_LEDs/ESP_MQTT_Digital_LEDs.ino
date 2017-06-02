@@ -20,9 +20,6 @@
       - ArduinoJSON
 */
 
-#define FASTLED_INTERRUPT_RETRY_COUNT 0 //makes animations smoother... supposedly... 
-#define FASTLED_ALLOW_INTERRUPTS 0
-
 #include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
