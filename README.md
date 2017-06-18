@@ -13,6 +13,25 @@ The code covered in this repository utilizes [Home Assistant's MQTT JSON Light C
 - Effects with Animation Speed
 - Over-the-Air (OTA) Upload from the ArduinoIDE!
 
+#### Effect List
+- bpm
+- candy cane
+- confetti
+- cyclon rainbow
+- dots
+- fire
+- glitter
+- juggle
+- lightning
+- police all
+- police one
+- rainbow
+- rainbow with glitter
+- sinelon
+- twinkle
+- noise
+- ripple
+
 Some of the effects incorporate the currrently selected color (sinelon, confetti, juggle, etc) while other effects use pre-defined colors. You can also select custom transition speeds between colors. The transition variable in Home Assistant (HA) also functions to control the animation speed of the currently running animation. The input_slider and automation in the HA configuration example allow you to easily set a transition speed from HA's user interface without needing to use the Services tool. 
 
 The default speed for the effects is hard coded and is set when the light is first turned on. When changing between effects, the previously used transition speed will take over. If the effects don't look great, play around with the slider to adjust the transition speed (AKA the effect's animation speed). 
@@ -44,6 +63,37 @@ This code also supports remote uploading to the ESP8266 using Arduino's OTA libr
 
 #### Wiring Diagram
 ![alt text](https://github.com/bruhautomation/ESP-MQTT-Digital-LEDs/blob/master/ESP%20MQTT%20Digital%20LEDs%20Wiring%20Diagram.png?raw=true "Wiring Diagram")
+
+#### Home Assistant Cofiguration Example
+```
+light:
+  - platform: mqtt_json
+    command_topic: 'status/topic'
+    brightness: true
+    color_temp: true
+    effect: true
+    effect_list:
+      - 'bpm'
+      - 'candy cane'
+      - 'confetti'
+      - 'cyclon rainbow'
+      - 'dots'
+      - 'fire'
+      - 'glitter'
+      - 'juggle'
+      - 'lightning'
+      - 'police all'
+      - 'police one'
+      - 'rainbow'
+      - 'glitter'
+      - 'rainbow with glitter'
+      - 'sinelon'
+      - 'twinkle'
+      - 'noise'
+      - 'ripple'
+    state_topic: 'state/topic'
+    rgb: true
+```
 
 
 #### Home Assistant Service Examples
