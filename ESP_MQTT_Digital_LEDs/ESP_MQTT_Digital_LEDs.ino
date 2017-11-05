@@ -80,6 +80,7 @@ byte red = 255;
 byte green = 255;
 byte blue = 255;
 byte brightness = 255;
+int color_temp = 144;
 
 
 
@@ -384,7 +385,7 @@ bool processJson(char* message) {
     
     if (root.containsKey("color_temp")) {
       //temp comes in as mireds, need to convert to kelvin then to RGB
-      int color_temp = root["color_temp"];
+      color_temp = root["color_temp"];
       unsigned int kelvin  = MILLION / color_temp;
       
       temp2rgb(kelvin);
@@ -429,7 +430,7 @@ void sendState() {
 
   root["brightness"] = brightness;
   root["effect"] = effectString.c_str();
-
+  root["color_temp"] = color_temp;
 
   char buffer[root.measureLength() + 1];
   root.printTo(buffer, sizeof(buffer));
