@@ -15,7 +15,7 @@
         - Next, download the ESP8266 dependancies by going to Tools -> Board -> Board Manager and searching for ESP8266 and installing it.
   
   - You will also need to download the follow libraries by going to Sketch -> Include Libraries -> Manage Libraries
-      - FastLED 
+      - Adafruit NeoPixel 
       - PubSubClient
       - ArduinoJSON
 */
@@ -23,33 +23,12 @@
 #include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
-#include "FastLED.h"
+#include <Adafruit_NeoPixel.h>
 #include <ESP8266mDNS.h>
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
+#include "auth.h"
 
-
-
-/************ WIFI and MQTT Information (CHANGE THESE FOR YOUR SETUP) ******************/
-const char* ssid = "YourSSID"; //type your WIFI information inside the quotes
-const char* password = "YourWIFIpassword";
-const char* mqtt_server = "your.MQTT.server.ip";
-const char* mqtt_username = "yourMQTTusername";
-const char* mqtt_password = "yourMQTTpassword";
-const int mqtt_port = 1883;
-
-
-
-/**************************** FOR OTA **************************************************/
-#define SENSORNAME "porch" //change this to whatever you want to call your device
-#define OTApassword "yourOTApassword" //the password you will need to enter to upload remotely via the ArduinoIDE
-int OTAport = 8266;
-
-
-
-/************* MQTT TOPICS (change these topics as you wish)  **************************/
-const char* light_state_topic = "bruh/porch";
-const char* light_set_topic = "bruh/porch/set";
 
 const char* on_cmd = "ON";
 const char* off_cmd = "OFF";
@@ -63,37 +42,29 @@ String oldeffectString = "solid";
 const int BUFFER_SIZE = JSON_OBJECT_SIZE(10);
 #define MQTT_MAX_PACKET_SIZE 512
 
-
-
 /*********************************** FastLED Defintions ********************************/
-#define NUM_LEDS    186
-#define DATA_PIN    5
-//#define CLOCK_PIN 5
-#define CHIPSET     WS2811
-#define COLOR_ORDER BRG
-
 byte realRed = 0;
 byte realGreen = 0;
 byte realBlue = 0;
+byte realWhite = 255;
 
-byte red = 255;
-byte green = 255;
-byte blue = 255;
+byte red = 0;
+byte green = 0;
+byte blue = 0;
+byte white = 255;
 byte brightness = 255;
-
-
 
 /******************************** GLOBALS for fade/flash *******************************/
 bool stateOn = false;
 bool startFade = false;
 bool onbeforeflash = false;
 unsigned long lastLoop = 0;
-int transitionTime = 0;
+int transitionTime = 50; // 1-150
 int effectSpeed = 0;
 bool inFade = false;
 int loopCount = 0;
-int stepR, stepG, stepB;
-int redVal, grnVal, bluVal;
+int stepR, stepG, stepB, stepW;
+int redVal, grnVal, bluVal, whiVal;
 
 bool flash = false;
 bool startFlash = false;
@@ -102,99 +73,49 @@ unsigned long flashStartTime = 0;
 byte flashRed = red;
 byte flashGreen = green;
 byte flashBlue = blue;
+byte flashWhite = white;
 byte flashBrightness = brightness;
-
-
-
-/********************************** GLOBALS for EFFECTS ******************************/
-//RAINBOW
-uint8_t thishue = 0;                                          // Starting hue value.
-uint8_t deltahue = 10;
-
-//CANDYCANE
-CRGBPalette16 currentPalettestriped; //for Candy Cane
-CRGBPalette16 gPal; //for fire
-
-//NOISE
-static uint16_t dist;         // A random number for our noise generator.
-uint16_t scale = 30;          // Wouldn't recommend changing this on the fly, or the animation will be really blocky.
-uint8_t maxChanges = 48;      // Value for blending between palettes.
-CRGBPalette16 targetPalette(OceanColors_p);
-CRGBPalette16 currentPalette(CRGB::Black);
-
-//TWINKLE
-#define DENSITY     80
-int twinklecounter = 0;
-
-//RIPPLE
-uint8_t colour;                                               // Ripple colour is randomized.
-int center = 0;                                               // Center of the current ripple.
-int step = -1;                                                // -1 is the initializing step.
-uint8_t myfade = 255;                                         // Starting brightness.
-#define maxsteps 16                                           // Case statement wouldn't allow a variable.
-uint8_t bgcol = 0;                                            // Background colour rotates.
-int thisdelay = 20;                                           // Standard delay value.
-
-//DOTS
-uint8_t   count =   0;                                        // Count up to 255 and then reverts to 0
-uint8_t fadeval = 224;                                        // Trail behind the LED's. Lower => faster fade.
-uint8_t bpm = 30;
-
-//LIGHTNING
-uint8_t frequency = 50;                                       // controls the interval between strikes
-uint8_t flashes = 8;                                          //the upper limit of flashes per strike
-unsigned int dimmer = 1;
-uint8_t ledstart;                                             // Starting location of a flash
-uint8_t ledlen;
-int lightningcounter = 0;
-
-//FUNKBOX
-int idex = 0;                //-LED INDEX (0 to NUM_LEDS-1
-int TOP_INDEX = int(NUM_LEDS / 2);
-int thissat = 255;           //-FX LOOPS DELAY VAR
-uint8_t thishuepolice = 0;
-int antipodal_index(int i) {
-  int iN = i + TOP_INDEX;
-  if (i >= TOP_INDEX) {
-    iN = ( i + TOP_INDEX ) % NUM_LEDS;
-  }
-  return iN;
-}
-
-//FIRE
-#define COOLING  55
-#define SPARKING 120
-bool gReverseDirection = false;
-
-//BPM
-uint8_t gHue = 0;
 
 
 WiFiClient espClient;
 PubSubClient client(espClient);
-struct CRGB leds[NUM_LEDS];
-
+Adafruit_NeoPixel strip = Adafruit_NeoPixel(NUM_LEDS, DATA_PIN_LEDS, NEO_GRBW + NEO_KHZ800);
 
 
 /********************************** START SETUP*****************************************/
 void setup() {
   Serial.begin(115200);
-  FastLED.addLeds<CHIPSET, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS);
 
-  setupStripedPalette( CRGB::Red, CRGB::Red, CRGB::White, CRGB::White); //for CANDY CANE
-  gPal = HeatColors_p; //for FIRE
+  pinMode(DATA_PIN_RELAY, OUTPUT);
+  digitalWrite(DATA_PIN_RELAY, HIGH);
+
+  delay(500); // Wait for Leds to init and Cap to charge
+  
+  // End of trinket special code
+  strip.setBrightness(brightness*BRIGHTNESS);
+  strip.begin();
+  strip.show(); // Initialize all pixels to 'off'
+  
+  // Standalone startup sequence - Wipe White
+  for(uint16_t i=0; i<NUM_LEDS; i++) {
+    strip.setPixelColor(i, strip.Color(0,0,0,255) );
+    strip.show();
+    delay(10);
+  }
 
   setup_wifi();
-  client.setServer(mqtt_server, mqtt_port);
+
+  // OK we are on Wifi so we are no standalone.
+  strip.setPixelColor(0, strip.Color(255,0,0,255) ); // Red tinge on first Pixel
+  strip.show();
+  
+  client.setServer(MQTT_SERVER, MQTT_PORT);
   client.setCallback(callback);
 
   //OTA SETUP
   ArduinoOTA.setPort(OTAport);
-  // Hostname defaults to esp8266-[ChipID]
-  ArduinoOTA.setHostname(SENSORNAME);
-
-  // No authentication by default
-  ArduinoOTA.setPassword((const char *)OTApassword);
+  ArduinoOTA.setHostname(SENSORNAME); // Hostname defaults to esp8266-[ChipID]
+  ArduinoOTA.setPassword((const char *)OTApassword); // No authentication by default
 
   ArduinoOTA.onStart([]() {
     Serial.println("Starting");
@@ -219,9 +140,11 @@ void setup() {
   Serial.print("IP Address: ");
   Serial.println(WiFi.localIP());
 
+  // OK we are connected
+  strip.setPixelColor(0, strip.Color(0,255,0,255) ); // Green tinge on first Pixel
+  strip.show();
+  delay(500); // Wait for Leds to init and Cap to charge
 }
-
-
 
 
 /********************************** START SETUP WIFI*****************************************/
@@ -231,10 +154,10 @@ void setup_wifi() {
   // We start by connecting to a WiFi network
   Serial.println();
   Serial.print("Connecting to ");
-  Serial.println(ssid);
+  Serial.println(WIFI_SSID);
   
   WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -282,16 +205,27 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
 
   if (stateOn) {
-
     realRed = map(red, 0, 255, 0, brightness);
     realGreen = map(green, 0, 255, 0, brightness);
     realBlue = map(blue, 0, 255, 0, brightness);
+    realWhite = map(white, 0, 255, 0, brightness);
   }
   else {
-
     realRed = 0;
     realGreen = 0;
     realBlue = 0;
+    realWhite = 0;
+  }
+
+  // Set the relay for the LED strips
+  if (!stateOn && digitalRead(DATA_PIN_RELAY)) {
+    digitalWrite(DATA_PIN_RELAY, LOW);
+    Serial.println("Relay: OFF");
+  }
+  if (stateOn && !digitalRead(DATA_PIN_RELAY)) {
+    digitalWrite(DATA_PIN_RELAY, HIGH);
+    delay(500); // Wait for Leds to init and Cap to charge
+    Serial.println("Relay: ON");
   }
 
   Serial.println(effect);
@@ -325,6 +259,10 @@ bool processJson(char* message) {
     }
   }
 
+  if (root.containsKey("transition")) {
+    transitionTime = root["transition"];
+  }
+    
   // If "flash" is included, treat RGB and brightness differently
   if (root.containsKey("flash")) {
     flashLength = (int)root["flash"] * 1000;
@@ -342,29 +280,32 @@ bool processJson(char* message) {
       flashRed = root["color"]["r"];
       flashGreen = root["color"]["g"];
       flashBlue = root["color"]["b"];
+      flashWhite = 0;
     }
     else {
       flashRed = red;
       flashGreen = green;
-      flashBlue = blue;
+      flashBlue = blue;      
+      flashWhite = white;
     }
 
     if (root.containsKey("effect")) {
       effect = root["effect"];
       effectString = effect;
-      twinklecounter = 0; //manage twinklecounter
+      //twinklecounter = 0; //manage twinklecounter
     }
 
     if (root.containsKey("transition")) {
       transitionTime = root["transition"];
     }
     else if ( effectString == "solid") {
-      transitionTime = 0;
+      transitionTime = 50;
     }
 
     flashRed = map(flashRed, 0, 255, 0, flashBrightness);
     flashGreen = map(flashGreen, 0, 255, 0, flashBrightness);
     flashBlue = map(flashBlue, 0, 255, 0, flashBrightness);
+    flashWhite = map(flashWhite, 0, 255, 0, flashBrightness);
 
     flash = true;
     startFlash = true;
@@ -380,15 +321,23 @@ bool processJson(char* message) {
       red = root["color"]["r"];
       green = root["color"]["g"];
       blue = root["color"]["b"];
+      white = 0;
     }
-    
+
+    if (root.containsKey("white_value")) {
+      red = 0;
+      green = 0;
+      blue = 0;
+      white = root["white_value"];
+    }
+        
     if (root.containsKey("color_temp")) {
       //temp comes in as mireds, need to convert to kelvin then to RGB
       int color_temp = root["color_temp"];
+      int MILLION = 100000;
       unsigned int kelvin  = MILLION / color_temp;
       
       temp2rgb(kelvin);
-      
     }
 
     if (root.containsKey("brightness")) {
@@ -398,14 +347,14 @@ bool processJson(char* message) {
     if (root.containsKey("effect")) {
       effect = root["effect"];
       effectString = effect;
-      twinklecounter = 0; //manage twinklecounter
+      //twinklecounter = 0; //manage twinklecounter
     }
 
     if (root.containsKey("transition")) {
       transitionTime = root["transition"];
     }
     else if ( effectString == "solid") {
-      transitionTime = 0;
+      transitionTime = 50;
     }
 
   }
@@ -427,14 +376,14 @@ void sendState() {
   color["g"] = green;
   color["b"] = blue;
 
+  root["white_value"] = white;
   root["brightness"] = brightness;
   root["effect"] = effectString.c_str();
-
 
   char buffer[root.measureLength() + 1];
   root.printTo(buffer, sizeof(buffer));
 
-  client.publish(light_state_topic, buffer, true);
+  client.publish(MQTT_STATE_TOPIC, buffer, true);
 }
 
 
@@ -445,10 +394,10 @@ void reconnect() {
   while (!client.connected()) {
     Serial.print("Attempting MQTT connection...");
     // Attempt to connect
-    if (client.connect(SENSORNAME, mqtt_username, mqtt_password)) {
+    if (client.connect(SENSORNAME, MQTT_USER, MQTT_PASSWORD)) {
       Serial.println("connected");
-      client.subscribe(light_set_topic);
-      setColor(0, 0, 0);
+      client.subscribe(MQTT_SET_TOPIC);
+      setColor(0, 0, 0, 0);
       sendState();
     } else {
       Serial.print("failed, rc=");
@@ -463,14 +412,13 @@ void reconnect() {
 
 
 /********************************** START Set Color*****************************************/
-void setColor(int inR, int inG, int inB) {
+void setColor(int inR, int inG, int inB, int inW) {
+  
   for (int i = 0; i < NUM_LEDS; i++) {
-    leds[i].red   = inR;
-    leds[i].green = inG;
-    leds[i].blue  = inB;
+    strip.setPixelColor(i, strip.Color(inR,inG,inB,inW) );
   }
 
-  FastLED.show();
+  strip.show();
 
   Serial.println("Setting LEDs:");
   Serial.print("r: ");
@@ -478,10 +426,13 @@ void setColor(int inR, int inG, int inB) {
   Serial.print(", g: ");
   Serial.print(inG);
   Serial.print(", b: ");
-  Serial.println(inB);
+  Serial.print(inB);
+  Serial.print(", w: ");
+  Serial.println(inW);
 }
 
 
+#include "NeoPixel_Effects.h"
 
 /********************************** START MAIN LOOP*****************************************/
 void loop() {
@@ -497,328 +448,125 @@ void loop() {
     return;
   }
 
-
-
   client.loop();
 
   ArduinoOTA.handle();
 
 
-  //EFFECT BPM
-  if (effectString == "bpm") {
-    uint8_t BeatsPerMinute = 62;
-    CRGBPalette16 palette = PartyColors_p;
-    uint8_t beat = beatsin8( BeatsPerMinute, 64, 255);
-    for ( int i = 0; i < NUM_LEDS; i++) { //9948
-      leds[i] = ColorFromPalette(palette, gHue + (i * 2), beat - gHue + (i * 10));
-    }
-    if (transitionTime == 0 or transitionTime == NULL) {
-      transitionTime = 30;
-    }
-    showleds();
-  }
-
-
-  //EFFECT Candy Cane
-  if (effectString == "candy cane") {
-    static uint8_t startIndex = 0;
-    startIndex = startIndex + 1; /* higher = faster motion */
-    fill_palette( leds, NUM_LEDS,
-                  startIndex, 16, /* higher = narrower stripes */
-                  currentPalettestriped, 255, LINEARBLEND);
-    if (transitionTime == 0 or transitionTime == NULL) {
-      transitionTime = 0;
-    }
-    showleds();
-  }
-
-
-  //EFFECT CONFETTI
-  if (effectString == "confetti" ) {
-    fadeToBlackBy( leds, NUM_LEDS, 25);
-    int pos = random16(NUM_LEDS);
-    leds[pos] += CRGB(realRed + random8(64), realGreen, realBlue);
-    if (transitionTime == 0 or transitionTime == NULL) {
-      transitionTime = 30;
-    }
-    showleds();
-  }
-
-
-  //EFFECT CYCLON RAINBOW
-  if (effectString == "cyclon rainbow") {                    //Single Dot Down
-    static uint8_t hue = 0;
-    // First slide the led in one direction
-    for (int i = 0; i < NUM_LEDS; i++) {
-      // Set the i'th led to red
-      leds[i] = CHSV(hue++, 255, 255);
-      // Show the leds
-      showleds();
-      // now that we've shown the leds, reset the i'th led to black
-      // leds[i] = CRGB::Black;
-      fadeall();
-      // Wait a little bit before we loop around and do it again
-      delay(10);
-    }
-    for (int i = (NUM_LEDS) - 1; i >= 0; i--) {
-      // Set the i'th led to red
-      leds[i] = CHSV(hue++, 255, 255);
-      // Show the leds
-      showleds();
-      // now that we've shown the leds, reset the i'th led to black
-      // leds[i] = CRGB::Black;
-      fadeall();
-      // Wait a little bit before we loop around and do it again
-      delay(10);
-    }
-  }
-
-
-  //EFFECT DOTS
-  if (effectString == "dots") {
-    uint8_t inner = beatsin8(bpm, NUM_LEDS / 4, NUM_LEDS / 4 * 3);
-    uint8_t outer = beatsin8(bpm, 0, NUM_LEDS - 1);
-    uint8_t middle = beatsin8(bpm, NUM_LEDS / 3, NUM_LEDS / 3 * 2);
-    leds[middle] = CRGB::Purple;
-    leds[inner] = CRGB::Blue;
-    leds[outer] = CRGB::Aqua;
-    nscale8(leds, NUM_LEDS, fadeval);
-
-    if (transitionTime == 0 or transitionTime == NULL) {
-      transitionTime = 30;
-    }
-    showleds();
-  }
-
-
-  //EFFECT FIRE
-  if (effectString == "fire") {
-    Fire2012WithPalette();
-    if (transitionTime == 0 or transitionTime == NULL) {
-      transitionTime = 150;
-    }
-    showleds();
-  }
-
-  random16_add_entropy( random8());
-
-
-  //EFFECT Glitter
-  if (effectString == "glitter") {
-    fadeToBlackBy( leds, NUM_LEDS, 20);
-    addGlitterColor(80, realRed, realGreen, realBlue);
-    if (transitionTime == 0 or transitionTime == NULL) {
-      transitionTime = 30;
-    }
-    showleds();
-  }
-
-
-  //EFFECT JUGGLE
-  if (effectString == "juggle" ) {                           // eight colored dots, weaving in and out of sync with each other
-    fadeToBlackBy(leds, NUM_LEDS, 20);
-    for (int i = 0; i < 8; i++) {
-      leds[beatsin16(i + 7, 0, NUM_LEDS - 1  )] |= CRGB(realRed, realGreen, realBlue);
-    }
-    if (transitionTime == 0 or transitionTime == NULL) {
-      transitionTime = 130;
-    }
-    showleds();
-  }
-
-
-  //EFFECT LIGHTNING
-  if (effectString == "lightning") {
-    twinklecounter = twinklecounter + 1;                     //Resets strip if previous animation was running
-    if (twinklecounter < 2) {
-      FastLED.clear();
-      FastLED.show();
-    }
-    ledstart = random8(NUM_LEDS);           // Determine starting location of flash
-    ledlen = random8(NUM_LEDS - ledstart);  // Determine length of flash (not to go beyond NUM_LEDS-1)
-    for (int flashCounter = 0; flashCounter < random8(3, flashes); flashCounter++) {
-      if (flashCounter == 0) dimmer = 5;    // the brightness of the leader is scaled down by a factor of 5
-      else dimmer = random8(1, 3);          // return strokes are brighter than the leader
-      fill_solid(leds + ledstart, ledlen, CHSV(255, 0, 255 / dimmer));
-      showleds();    // Show a section of LED's
-      delay(random8(4, 10));                // each flash only lasts 4-10 milliseconds
-      fill_solid(leds + ledstart, ledlen, CHSV(255, 0, 0)); // Clear the section of LED's
-      showleds();
-      if (flashCounter == 0) delay (130);   // longer delay until next flash after the leader
-      delay(50 + random8(100));             // shorter delay between strokes
-    }
-    delay(random8(frequency) * 100);        // delay between strikes
-    if (transitionTime == 0 or transitionTime == NULL) {
-      transitionTime = 0;
-    }
-    showleds();
-  }
-
-
-  //EFFECT POLICE ALL
-  if (effectString == "police all") {                 //POLICE LIGHTS (TWO COLOR SOLID)
-    idex++;
-    if (idex >= NUM_LEDS) {
-      idex = 0;
-    }
-    int idexR = idex;
-    int idexB = antipodal_index(idexR);
-    int thathue = (thishuepolice + 160) % 255;
-    leds[idexR] = CHSV(thishuepolice, thissat, 255);
-    leds[idexB] = CHSV(thathue, thissat, 255);
-    if (transitionTime == 0 or transitionTime == NULL) {
-      transitionTime = 30;
-    }
-    showleds();
-  }
-
-  //EFFECT POLICE ONE
-  if (effectString == "police one") {
-    idex++;
-    if (idex >= NUM_LEDS) {
-      idex = 0;
-    }
-    int idexR = idex;
-    int idexB = antipodal_index(idexR);
-    int thathue = (thishuepolice + 160) % 255;
-    for (int i = 0; i < NUM_LEDS; i++ ) {
-      if (i == idexR) {
-        leds[i] = CHSV(thishuepolice, thissat, 255);
-      }
-      else if (i == idexB) {
-        leds[i] = CHSV(thathue, thissat, 255);
-      }
-      else {
-        leds[i] = CHSV(0, 0, 0);
-      }
-    }
-    if (transitionTime == 0 or transitionTime == NULL) {
-      transitionTime = 30;
-    }
-    showleds();
-  }
-
-
-  //EFFECT RAINBOW
-  if (effectString == "rainbow") {
-    // FastLED's built-in rainbow generator
-    static uint8_t starthue = 0;    thishue++;
-    fill_rainbow(leds, NUM_LEDS, thishue, deltahue);
-    if (transitionTime == 0 or transitionTime == NULL) {
-      transitionTime = 130;
-    }
-    showleds();
-  }
-
-
-  //EFFECT RAINBOW WITH GLITTER
-  if (effectString == "rainbow with glitter") {               // FastLED's built-in rainbow generator with Glitter
-    static uint8_t starthue = 0;
-    thishue++;
-    fill_rainbow(leds, NUM_LEDS, thishue, deltahue);
-    addGlitter(80);
-    if (transitionTime == 0 or transitionTime == NULL) {
-      transitionTime = 130;
-    }
-    showleds();
-  }
-
-
-  //EFFECT SIENLON
-  if (effectString == "sinelon") {
-    fadeToBlackBy( leds, NUM_LEDS, 20);
-    int pos = beatsin16(13, 0, NUM_LEDS - 1);
-    leds[pos] += CRGB(realRed, realGreen, realBlue);
-    if (transitionTime == 0 or transitionTime == NULL) {
-      transitionTime = 150;
-    }
-    showleds();
-  }
-
-
-  //EFFECT TWINKLE
+  //EFFECTS
   if (effectString == "twinkle") {
-    twinklecounter = twinklecounter + 1;
-    if (twinklecounter < 2) {                               //Resets strip if previous animation was running
-      FastLED.clear();
-      FastLED.show();
-    }
-    const CRGB lightcolor(8, 7, 1);
-    for ( int i = 0; i < NUM_LEDS; i++) {
-      if ( !leds[i]) continue; // skip black pixels
-      if ( leds[i].r & 1) { // is red odd?
-        leds[i] -= lightcolor; // darken if red is odd
-      } else {
-        leds[i] += lightcolor; // brighten if red is even
-      }
-    }
-    if ( random8() < DENSITY) {
-      int j = random16(NUM_LEDS);
-      if ( !leds[j] ) leds[j] = lightcolor;
-    }
+    //Twinkle(10, 100, false);
+    Twinkle(10, (2*transitionTime), false);
+  }
 
-    if (transitionTime == 0 or transitionTime == NULL) {
-      transitionTime = 0;
-    }
-    showleds();
+  if (effectString == "cylon bounce") {
+    //CylonBounce(4, 10, 50);
+    CylonBounce(4, transitionTime, 50);
+  }
+
+  if (effectString == "fire") {
+    //Fire(55,120,15);
+    Fire(55,120,(2*transitionTime));
+  }
+
+  if (effectString == "fade in out") {
+    FadeInOut();
+  }
+
+  if (effectString == "strobe") {
+    // Slower:
+    //Strobe(10, 100);
+    // Fast:
+    //Strobe(10, 50);
+    Strobe(10, transitionTime);
+  }
+
+  if (effectString == "theater chase") {
+    //theaterChase(50);
+    theaterChase(transitionTime);
+  }
+
+  if (effectString == "rainbow cycle") {
+    //rainbowCycle(20);
+    rainbowCycle(transitionTime);
+  }
+
+  if (effectString == "color wipe") {
+    //colorWipe(50);
+    colorWipe(transitionTime);
+  }
+
+  if (effectString == "running lights") {
+    //RunningLights(50);
+    RunningLights(transitionTime);
+  }
+
+  if (effectString == "snow sparkle") {
+    SnowSparkle(20, random(transitionTime,(10*transitionTime)));
+  }
+
+  if (effectString == "sparkle") {
+    //Sparkle(0);
+    Sparkle(transitionTime);
+  }
+
+  if (effectString == "twinkle random") {
+    //TwinkleRandom(20, 100, false);
+    TwinkleRandom(20, (2*transitionTime), false);
   }
 
 
-  EVERY_N_MILLISECONDS(10) {
 
-    nblendPaletteTowardPalette(currentPalette, targetPalette, maxChanges);  // FOR NOISE ANIMATIon
-    {
-      gHue++;
-    }
 
-    //EFFECT NOISE
-    if (effectString == "noise") {
-      for (int i = 0; i < NUM_LEDS; i++) {                                     // Just onE loop to fill up the LED array as all of the pixels change.
-        uint8_t index = inoise8(i * scale, dist + i * scale) % 255;            // Get a value from the noise function. I'm using both x and y axis.
-        leds[i] = ColorFromPalette(currentPalette, index, 255, LINEARBLEND);   // With that value, look up the 8 bit colour palette value and assign it to the current LED.
-      }
-      dist += beatsin8(10, 1, 4);                                              // Moving along the distance (that random number we started out with). Vary it a bit with a sine wave.
-      // In some sketches, I've used millis() instead of an incremented counter. Works a treat.
-      if (transitionTime == 0 or transitionTime == NULL) {
-        transitionTime = 0;
-      }
-      showleds();
-    }
 
-    //EFFECT RIPPLE
-    if (effectString == "ripple") {
-      for (int i = 0; i < NUM_LEDS; i++) leds[i] = CHSV(bgcol++, 255, 15);  // Rotate background colour.
-      switch (step) {
-        case -1:                                                          // Initialize ripple variables.
-          center = random(NUM_LEDS);
-          colour = random8();
-          step = 0;
-          break;
-        case 0:
-          leds[center] = CHSV(colour, 255, 255);                          // Display the first pixel of the ripple.
-          step ++;
-          break;
-        case maxsteps:                                                    // At the end of the ripples.
-          step = -1;
-          break;
-        default:                                                             // Middle of the ripples.
-          leds[(center + step + NUM_LEDS) % NUM_LEDS] += CHSV(colour, 255, myfade / step * 2);   // Simple wrap from Marc Miller
-          leds[(center - step + NUM_LEDS) % NUM_LEDS] += CHSV(colour, 255, myfade / step * 2);
-          step ++;                                                         // Next step.
-          break;
-      }
-      if (transitionTime == 0 or transitionTime == NULL) {
-        transitionTime = 30;
-      }
-      showleds();
-    }
-
+  if (effectString == "bpm") {
+  }
+  if (effectString == "candy cane") {
+  }
+  if (effectString == "confetti" ) {
+  }
+  if (effectString == "dots") {
+  }
+  if (effectString == "glitter") {
+  }
+  if (effectString == "juggle" ) {                           // eight colored dots, weaving in and out of sync with each other
+  }
+  if (effectString == "lightning") {
+  }
+  if (effectString == "police all") {                 //POLICE LIGHTS (TWO COLOR SOLID)
+  }
+  if (effectString == "police one") {
+  }
+  if (effectString == "rainbow") {
+  }
+  if (effectString == "rainbow with glitter") {               // FastLED's built-in rainbow generator with Glitter
   }
 
 
-  EVERY_N_SECONDS(5) {
-    targetPalette = CRGBPalette16(CHSV(random8(), 255, random8(128, 255)), CHSV(random8(), 255, random8(128, 255)), CHSV(random8(), 192, random8(128, 255)), CHSV(random8(), 255, random8(128, 255)));
-  }
+
+
+
+//  EVERY_N_MILLISECONDS(10) {
+//
+//    nblendPaletteTowardPalette(currentPalette, targetPalette, maxChanges);  // FOR NOISE ANIMATIon
+//    {
+//      gHue++;
+//    }
+//
+//    //EFFECT NOISE
+//    if (effectString == "noise") {
+//    }
+//
+//    //EFFECT RIPPLE
+//    if (effectString == "ripple") {
+//    }
+//
+//  }
+
+
+//  EVERY_N_SECONDS(5) {
+//    targetPalette = CRGBPalette16(CHSV(random8(), 255, random8(128, 255)), CHSV(random8(), 255, random8(128, 255)), CHSV(random8(), 192, random8(128, 255)), CHSV(random8(), 255, random8(128, 255)));
+//  }
 
   //FLASH AND FADE SUPPORT
   if (flash) {
@@ -829,10 +577,10 @@ void loop() {
 
     if ((millis() - flashStartTime) <= flashLength) {
       if ((millis() - flashStartTime) % 1000 <= 500) {
-        setColor(flashRed, flashGreen, flashBlue);
+        setColor(flashRed, flashGreen, flashBlue, flashWhite);
       }
       else {
-        setColor(0, 0, 0);
+        setColor(0, 0, 0, 0);
         // If you'd prefer the flashing to happen "on top of"
         // the current color, uncomment the next line.
         // setColor(realRed, realGreen, realBlue);
@@ -842,11 +590,11 @@ void loop() {
       flash = false;
       effectString = oldeffectString;
       if (onbeforeflash) { //keeps light off after flash if light was originally off
-        setColor(realRed, realGreen, realBlue);
+        setColor(realRed, realGreen, realBlue, realWhite);
       }
       else {
         stateOn = false;
-        setColor(0, 0, 0);
+        setColor(0, 0, 0, 0);
         sendState();
       }
     }
@@ -855,11 +603,12 @@ void loop() {
   if (startFade && effectString == "solid") {
     // If we don't want to fade, skip it.
     if (transitionTime == 0) {
-      setColor(realRed, realGreen, realBlue);
+      setColor(realRed, realGreen, realBlue, realWhite);
 
       redVal = realRed;
       grnVal = realGreen;
       bluVal = realBlue;
+      whiVal = realWhite;
 
       startFade = false;
     }
@@ -868,6 +617,7 @@ void loop() {
       stepR = calculateStep(redVal, realRed);
       stepG = calculateStep(grnVal, realGreen);
       stepB = calculateStep(bluVal, realBlue);
+      stepW = calculateStep(whiVal, realWhite);
 
       inFade = true;
     }
@@ -883,9 +633,10 @@ void loop() {
         redVal = calculateVal(stepR, redVal, loopCount);
         grnVal = calculateVal(stepG, grnVal, loopCount);
         bluVal = calculateVal(stepB, bluVal, loopCount);
+        whiVal = calculateVal(stepW, whiVal, loopCount);
 
         if (effectString == "solid") {
-          setColor(redVal, grnVal, bluVal); // Write current values to LED pins
+          setColor(redVal, grnVal, bluVal, whiVal); // Write current values to LED pins
         }
         loopCount++;
       }
@@ -958,103 +709,25 @@ int calculateVal(int step, int val, int i) {
 
 
 
-/**************************** START STRIPLED PALETTE *****************************************/
-void setupStripedPalette( CRGB A, CRGB AB, CRGB B, CRGB BA) {
-  currentPalettestriped = CRGBPalette16(
-                            A, A, A, A, A, A, A, A, B, B, B, B, B, B, B, B
-                            //    A, A, A, A, A, A, A, A, B, B, B, B, B, B, B, B
-                          );
-}
-
-
-
-/********************************** START FADE************************************************/
-void fadeall() {
-  for (int i = 0; i < NUM_LEDS; i++) {
-    leds[i].nscale8(250);  //for CYCLon
-  }
-}
-
-
-
-/********************************** START FIRE **********************************************/
-void Fire2012WithPalette()
-{
-  // Array of temperature readings at each simulation cell
-  static byte heat[NUM_LEDS];
-
-  // Step 1.  Cool down every cell a little
-  for ( int i = 0; i < NUM_LEDS; i++) {
-    heat[i] = qsub8( heat[i],  random8(0, ((COOLING * 10) / NUM_LEDS) + 2));
-  }
-
-  // Step 2.  Heat from each cell drifts 'up' and diffuses a little
-  for ( int k = NUM_LEDS - 1; k >= 2; k--) {
-    heat[k] = (heat[k - 1] + heat[k - 2] + heat[k - 2] ) / 3;
-  }
-
-  // Step 3.  Randomly ignite new 'sparks' of heat near the bottom
-  if ( random8() < SPARKING ) {
-    int y = random8(7);
-    heat[y] = qadd8( heat[y], random8(160, 255) );
-  }
-
-  // Step 4.  Map from heat cells to LED colors
-  for ( int j = 0; j < NUM_LEDS; j++) {
-    // Scale the heat value from 0-255 down to 0-240
-    // for best results with color palettes.
-    byte colorindex = scale8( heat[j], 240);
-    CRGB color = ColorFromPalette( gPal, colorindex);
-    int pixelnumber;
-    if ( gReverseDirection ) {
-      pixelnumber = (NUM_LEDS - 1) - j;
-    } else {
-      pixelnumber = j;
-    }
-    leds[pixelnumber] = color;
-  }
-}
-
-
-
-/********************************** START ADD GLITTER *********************************************/
-void addGlitter( fract8 chanceOfGlitter)
-{
-  if ( random8() < chanceOfGlitter) {
-    leds[ random16(NUM_LEDS) ] += CRGB::White;
-  }
-}
-
-
-
-/********************************** START ADD GLITTER COLOR ****************************************/
-void addGlitterColor( fract8 chanceOfGlitter, int red, int green, int blue)
-{
-  if ( random8() < chanceOfGlitter) {
-    leds[ random16(NUM_LEDS) ] += CRGB(red, green, blue);
-  }
-}
-
-
 
 /********************************** START SHOW LEDS ***********************************************/
-void showleds() {
-
-  delay(1);
-
-  if (stateOn) {
-    FastLED.setBrightness(brightness);  //EXECUTE EFFECT COLOR
-    FastLED.show();
-    if (transitionTime > 0 && transitionTime < 130) {  //Sets animation speed based on receieved value
-      FastLED.delay(1000 / transitionTime);
-      //delay(10*transitionTime);
-    }
-  }
-  else if (startFade) {
-    setColor(0, 0, 0);
-    startFade = false;
-  }
-}
+//void showleds() {
+//
+//  delay(1);
+//
+//  if (stateOn) {
+//    strip.setBrightness(brightness*BRIGHTNESS);  //EXECUTE EFFECT COLOR
+//    strip.show();;
+//    if (transitionTime > 0 && transitionTime < 130) {  //Sets animation speed based on receieved value
+//      //strip.delay(1000 / transitionTime);
+//      delay(10*transitionTime);
+//    }
+//  }
+//  else if (startFade) {
+//    setColor(0, 0, 0, 0);
+//    startFade = false;
+//  }
+//}
 void temp2rgb(unsigned int kelvin) {
     int tmp_internal = kelvin / 100.0;
     
