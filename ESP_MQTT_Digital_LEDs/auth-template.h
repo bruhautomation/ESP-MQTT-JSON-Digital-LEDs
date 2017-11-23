@@ -3,11 +3,11 @@
 #ifndef _AUTH_DETAILS
 #define _AUTH_DETAILS
 
-#define SENSORNAME "porch" //change this to whatever you want to call your device
+#define SENSORNAME "porch" // Change this to whatever you want to call your device
 
 #define NUM_LEDS    128 // 2.14m x 60 per meter
 #define DATA_PIN_LEDS    15  // D8 on ESP8266
-#define BRIGHTNESS  0.6  // 60% - Brightness Percentage (This is used to limit the current from the power supply) - 2.4A with 128 leds on RGB White (60ma)
+#define MAXBRIGHTNESS  155  // 60% - Brightness Percentage (This is used to limit the current from the power supply) - 2.4A with 128 leds on RGB White (60ma)
 
 #define DATA_PIN_RELAY    13  // D7 on ESP8266
 

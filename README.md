@@ -1,4 +1,4 @@
-# ESP MQTT JSON Digital LEDs
+# ESP8266 MQTT JSON SK6812RGBW HomeAssistant
 
 This project shows a super easy way to get started using Digital LED strips with [Home Assistant](https://home-assistant.io/), a sick, open-source Home Automation platform that can do just about anything. 
 
@@ -18,10 +18,9 @@ Most of the effects incorporate the currrently selected color while other effect
 
 The default speed for the effects is hard coded and is set when the light is first turned on. When changing between effects, the previously used transition speed will take over. If the effects don't look great, play around with the slider to adjust the transition speed (AKA the effect's animation speed). 
 
-#### Optional Relay
-
-Addressable LEDs are different to a normal string. Every pixel ALWAYS has power as it is awaiting commands. So even while the string is off, a few watts will be waisted (1-3 based upon your string length) 
-If you connect up an optional MOSFET or relay, when the LED’s are set to off the LED strip will be disconnected saving power.
+#### Optional MOSFET
+Addressable LED are different to a normal LED string. Every pixel ALWAYS has power as it is awaiting commands. So even while the string is off. This quiescent current can add up. On a 5-meter strip (60 LEDs per meter) a full watt is used from the strip while the strip is not illuminated. (That’s nearly enough to send a person to the moon)
+The sketch and related wiring diagram includes a P-Channel MOSFET which will turn off power to the strip when the strip is off. This means the ESP8266 can always energised and the LED strip will turn on only when it is meant to light up.
 
 
 #### OTA Uploading
@@ -38,6 +37,8 @@ NOTE: This sketch is using a diffrent set of effects.
 #### Parts List
 - [Digital RGB Leds](https://www.adafruit.com/product/2842)
 - [NodeMCU](http://geni.us/4pVoT)
+- [P-Channel MOSFET] ()
+- [330Ohm Resisters] ()
 - [Aluminum Mounting Channel/Diffuser](http://geni.us/JBDhv7)
 - [5V 15amp Power Supply](http://geni.us/8rKC)
 - [Strip Connector](http://geni.us/OL7tHv)
@@ -50,42 +51,5 @@ NOTE: This sketch is using a diffrent set of effects.
 
 
 #### Wiring Diagram
-![alt text](https://github.com/bruhautomation/ESP-MQTT-Digital-LEDs/blob/master/ESP%20MQTT%20Digital%20LEDs%20Wiring%20Diagram.png?raw=true "Wiring Diagram")
+![alt text](https://github.com/DotNetDann/ESP8266-MQTT-JSON-SK6812RGBW-HomeAssistant/blob/master/Wiring%20Diagram.png?raw=true "Wiring Diagram")
 
-
-#### Home Assistant Service Examples
-Besides using the card in Home Assistant's user interface, you can also use the Services tool to control the light using the light.turn_on and light.turn_off services. This will let you play with the parameters you can call later in automations or scripts. 
-
-Fade the Light On Over 5 Seconds - light.turn_on
-```
-{"entity_id":"light.porch_strip",
-"brightness":150,
-"color_name":"blue",
-"transition":"5"
-}
-```
-
-Flash The Light - light.turn_on
-```
-{"entity_id":"light.porch_strip",
-"color_name":"green",
-"brightness":255,
-"flash":"short"
-}
-```
-
-Call Rainbow Effect with Slow Animation Speed - light.turn_on
-```
-{"entity_id":"light.porch_strip",
-"transition":"50",
-"brightness":255,
-"effect":"rainbow"
-}
-```
-
-Fade the Light Off Over 5 Seconds - light.turn_off
-```
-{"entity_id":"light.porch_strip",
-"transition":"50"
-}
-```
