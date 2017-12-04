@@ -28,7 +28,7 @@
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
 
-
+#define MILLION 1000000
 
 /************ WIFI and MQTT Information (CHANGE THESE FOR YOUR SETUP) ******************/
 const char* ssid = "YourSSID"; //type your WIFI information inside the quotes
@@ -107,6 +107,9 @@ byte flashBrightness = brightness;
 
 
 /********************************** GLOBALS for EFFECTS ******************************/
+//RANGE
+int rangestart, rangeend, rangecount;
+
 //RAINBOW
 uint8_t thishue = 0;                                          // Starting hue value.
 uint8_t deltahue = 10;
@@ -179,7 +182,10 @@ struct CRGB leds[NUM_LEDS];
 /********************************** START SETUP*****************************************/
 void setup() {
   Serial.begin(115200);
+  // use this if your chipsset doesn't need a clock pin  
   FastLED.addLeds<CHIPSET, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS);
+  // use this if your chipsset needs a clock pin
+  // FastLED.addLeds<CHIPSET, DATA_PIN, CLOCK_PIN, COLOR_ORDER>(leds, NUM_LEDS);
 
   setupStripedPalette( CRGB::Red, CRGB::Red, CRGB::White, CRGB::White); //for CANDY CANE
   gPal = HeatColors_p; //for FIRE
@@ -398,6 +404,12 @@ bool processJson(char* message) {
     if (root.containsKey("effect")) {
       effect = root["effect"];
       effectString = effect;
+    if (root.containsKey("rangestart")) {
+      rangestart = root["rangestart"];
+      rangecount = root["rangecount"];
+      rangeend = rangestart + rangecount;
+    }
+
       twinklecounter = 0; //manage twinklecounter
     }
 
@@ -503,7 +515,31 @@ void loop() {
 
   ArduinoOTA.handle();
 
+//EFFECT RANGE
+  if (effectString == "range" ) {
+    fadeToBlackBy( leds, NUM_LEDS, 20);
+    for ( int i = rangestart; i < rangeend; i++) {
+    leds[i] += CRGB(255, 255, 255);
+    }
+    showleds();
+  }
 
+
+//EFFECT ADDRANGE
+  if (effectString == "addrange" ) {
+    for ( int i = rangestart; i < rangeend; i++) {
+    leds[i] += CRGB(255, 255, 255);
+    }
+    showleds();
+  }
+
+//EFFECT SUBRANGE
+  if (effectString == "subrange" ) {
+    for ( int i = rangestart; i < rangeend; i++) {
+    leds[i] = CRGB::Black;
+    }
+    showleds();
+  }
   //EFFECT BPM
   if (effectString == "bpm") {
     uint8_t BeatsPerMinute = 62;
@@ -542,8 +578,7 @@ void loop() {
       transitionTime = 30;
     }
     showleds();
-  }
-
+}
 
   //EFFECT CYCLON RAINBOW
   if (effectString == "cyclon rainbow") {                    //Single Dot Down
@@ -671,6 +706,25 @@ void loop() {
     }
     showleds();
   }
+
+
+  //EFFECT XMAS
+  if (effectString == "xmas") {                 //Christmas Red/Green (TWO COLOR SOLID)
+    idex++;
+    if (idex >= NUM_LEDS) {
+      idex = 0;
+    }
+    int idexR = idex;
+    int idexG = antipodal_index(idexR);
+    leds[idexR] = CRGB::Red;
+    leds[idexG] = CRGB::Green;
+    if (transitionTime == 0 or transitionTime == NULL) {
+      transitionTime = 30;
+    }
+    showleds();
+  }
+
+
 
   //EFFECT POLICE ONE
   if (effectString == "police one") {
