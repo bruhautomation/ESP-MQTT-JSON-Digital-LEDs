@@ -8,35 +8,31 @@ mqtt:
 light:
   - platform: mqtt_json
     name: "Porch Strip"
-    state_topic: "bruh/porch"
-    command_topic: "bruh/porch/set"
+    state_topic: "led/porch"
+    command_topic: "led/porch/set"
     effect: true
     effect_list:
-      - bpm
-      - candy cane  
-      - confetti  
-      - cyclon rainbow  
-      - dots  
-      - fire  
-      - glitter  
-      - juggle  
-      - lightning
-      - noise  
-      - police all  
-      - police one  
-      - rainbow  
-      - rainbow with glitter  
-      - ripple  
-      - sinelon  
-      - solid  
-      - twinkle  
+      - solid
+      - twinkle
+      - cylon bounce
+      - fire
+      - fade in out
+      - strobe
+      - theater chase
+      - rainbow cycle
+      - color wipe
+      - running lights
+      - snow sparkle
+      - sparkle
+      - twinkle random
     brightness: true
     flash: true
     rgb: true
+    white_value: true
     optimistic: false
     qos: 0
 
-input_slider:
+input_number:
   porch_animation_speed:
     name: Porch Animation Speed
     initial: 150
@@ -54,5 +50,5 @@ automation:
     action:
       - service: mqtt.publish
         data_template:
-          topic: "bruh/porch/set"
+          topic: "led/porch/set"
           payload: '{"transition":{{ trigger.to_state.state | int }}}'
