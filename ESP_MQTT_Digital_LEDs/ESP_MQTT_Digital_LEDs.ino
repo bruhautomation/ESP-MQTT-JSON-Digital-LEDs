@@ -23,6 +23,8 @@
 #include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
+// Uncomment this if you are experiencing flickering
+//#define FASTLED_ALLOW_INTERRUPTS 0
 #include "FastLED.h"
 #include <ESP8266mDNS.h>
 #include <WiFiUdp.h>
@@ -66,9 +68,9 @@ const int BUFFER_SIZE = JSON_OBJECT_SIZE(10);
 
 
 /*********************************** FastLED Defintions ********************************/
-#define NUM_LEDS    186
+// Change These value according to your setup!
+#define NUM_LEDS    100
 #define DATA_PIN    5
-//#define CLOCK_PIN 5
 #define CHIPSET     WS2811
 #define COLOR_ORDER BRG
 
@@ -183,7 +185,7 @@ void setup() {
 
   setupStripedPalette( CRGB::Red, CRGB::Red, CRGB::White, CRGB::White); //for CANDY CANE
   gPal = HeatColors_p; //for FIRE
-
+  //setColor(255, 255, 255); // Uncomment this line if you want the strip ON on power-on
   setup_wifi();
   client.setServer(mqtt_server, mqtt_port);
   client.setCallback(callback);
@@ -385,7 +387,7 @@ bool processJson(char* message) {
     if (root.containsKey("color_temp")) {
       //temp comes in as mireds, need to convert to kelvin then to RGB
       int color_temp = root["color_temp"];
-      unsigned int kelvin  = MILLION / color_temp;
+      unsigned int kelvin  = 1000000 / color_temp;
       
       temp2rgb(kelvin);
       
@@ -447,8 +449,7 @@ void reconnect() {
     // Attempt to connect
     if (client.connect(SENSORNAME, mqtt_username, mqtt_password)) {
       Serial.println("connected");
-      client.subscribe(light_set_topic);
-      setColor(0, 0, 0);
+      client.subscribe(light_set_topic);    
       sendState();
     } else {
       Serial.print("failed, rc=");
