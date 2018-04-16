@@ -27,7 +27,7 @@
 #include <ESP8266mDNS.h>
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
-
+int MILLION = 100000;
 
 
 /************ WIFI and MQTT Information (CHANGE THESE FOR YOUR SETUP) ******************/
@@ -69,8 +69,8 @@ const int BUFFER_SIZE = JSON_OBJECT_SIZE(10);
 #define NUM_LEDS    186
 #define DATA_PIN    5
 //#define CLOCK_PIN 5
-#define CHIPSET     WS2811
-#define COLOR_ORDER BRG
+#define CHIPSET     WS2801
+#define COLOR_ORDER RGB
 
 byte realRed = 0;
 byte realGreen = 0;
@@ -179,7 +179,7 @@ struct CRGB leds[NUM_LEDS];
 /********************************** START SETUP*****************************************/
 void setup() {
   Serial.begin(115200);
-  FastLED.addLeds<CHIPSET, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS);
+  FastLED.addLeds<CHIPSET, DATA_PIN, CLOCK_PIN, COLOR_ORDER>(leds, NUM_LEDS);
 
   setupStripedPalette( CRGB::Red, CRGB::Red, CRGB::White, CRGB::White); //for CANDY CANE
   gPal = HeatColors_p; //for FIRE
