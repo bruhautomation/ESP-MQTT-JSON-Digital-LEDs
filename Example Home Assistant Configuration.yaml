@@ -51,7 +51,7 @@ automation:
     hide_entity: False
     trigger:
       - platform: state
-        entity_id: input_slider.porch_animation_speed
+        entity_id: input_number.porch_animation_speed
     action:
       - service: mqtt.publish
         data_template:
