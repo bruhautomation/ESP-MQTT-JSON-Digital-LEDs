@@ -6,7 +6,8 @@ mqtt:
   password: YOURPASSWORD
 
 light:
-  - platform: mqtt_json
+  - platform: mqtt
+    schema: json
     name: "Porch Strip"
     state_topic: "bruh/porch"
     command_topic: "bruh/porch/set"
@@ -36,7 +37,7 @@ light:
     optimistic: false
     qos: 0
 
-input_slider:
+input_number:
   porch_animation_speed:
     name: Porch Animation Speed
     initial: 150
