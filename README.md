@@ -1,5 +1,3 @@
-# ESP MQTT JSON Digital LEDs
-
 This is a modified version of https://github.com/bkpsu/ESP-MQTT-JSON-Digital-LEDs which is a modified version of https://github.com/bruhautomation/ESP-MQTT-JSON-Digital-LEDs
 
 The code covered in this repository utilizes [Home Assistant's MQTT Light Component](https://home-assistant.io/components/light.mqtt_json/) and an ESP8266 microcontroller. 
@@ -29,14 +27,10 @@ The default speed for the effects is hard coded and is set when the light is fir
 This code also supports remote uploading to the ESP8266 using Arduino's OTA library. To utilize this, you'll need to first upload the sketch using the traditional USB method. However, if you need to update your code after that, your WIFI-connected ESP chip should show up as an option under Tools -> Port -> Porch at your.ip.address.xxx. More information on OTA uploading can be found [here](http://esp8266.github.io/Arduino/versions/2.0.0/doc/ota_updates/ota_updates.html). Note: You cannot access the serial monitor over WIFI at this point.  
 
 #### Demo Video
+[![Demo Video](http://i.imgur.com/cpW2JAX.png)](https://www.youtube.com/watch?v=DQZ4x6Z3678 "Demo - RGB Digital LED Strip controlled using ESP, MQTT, and Home Assistant")
 
 #### Tutorial Video
-
-#### Parts List
-
-#### Wiring Diagram
-![alt text](https://github.com/bruhautomation/ESP-MQTT-Digital-LEDs/blob/master/ESP%20MQTT%20Digital%20LEDs%20Wiring%20Diagram.png?raw=true "Wiring Diagram")
-Note this modified code uses Pin D3 instead of Pin D5
+[![Tutorial Video](http://i.imgur.com/9UMl8Xo.jpg)](https://www.youtube.com/watch?v=9KI36GTgwuQ "The BEST Digital LED Strip Light Tutorial - DIY, WIFI-Controllable via ESP, MQTT, and Home Assistant")
 
 #### Home Assistant Configuration YAML
 ````
@@ -106,3 +100,59 @@ light:
     "state": "ON"
   }
 ````
+
+#### Parts List
+- [Digital RGB Leds](http://geni.us/8mBml)
+- [NodeMCU](http://geni.us/4pVoT)
+- [Aluminum Mounting Channel/Diffuser](http://geni.us/JBDhv7)
+- [12v to 5v Step Down](http://geni.us/PghhV9)
+- [12V 15amp Power Supply](http://geni.us/8rKC)
+- [Strip Connector](http://geni.us/OL7tHv)
+- [Logic Level Shifter](http://geni.us/4hJAyy)
+- [20 Gauge Wire](http://geni.us/2MBYAXF)
+- [Cable Chase](http://geni.us/lFqD)
+- [Project Box](http://geni.us/kZRgaj)
+- [Header Wires](http://geni.us/GniKAX)
+- [Power Jacks](http://geni.us/7Ywdut)
+
+
+#### Wiring Diagram
+![alt text](https://github.com/bruhautomation/ESP-MQTT-Digital-LEDs/blob/master/ESP%20MQTT%20Digital%20LEDs%20Wiring%20Diagram.png?raw=true "Wiring Diagram")
+
+
+#### Home Assistant Service Examples
+Besides using the card in Home Assistant's user interface, you can also use the Services tool to control the light using the light.turn_on and light.turn_off services. This will let you play with the parameters you can call later in automations or scripts. 
+
+Fade the Light On Over 5 Seconds - light.turn_on
+```
+{"entity_id":"light.porch_strip",
+"brightness":150,
+"color_name":"blue",
+"transition":"5"
+}
+```
+
+Flash The Light - light.turn_on
+```
+{"entity_id":"light.porch_strip",
+"color_name":"green",
+"brightness":255,
+"flash":"short"
+}
+```
+
+Call Rainbow Effect with Slow Animation Speed - light.turn_on
+```
+{"entity_id":"light.porch_strip",
+"transition":"50",
+"brightness":255,
+"effect":"rainbow"
+}
+```
+
+Fade the Light Off Over 5 Seconds - light.turn_off
+```
+{"entity_id":"light.porch_strip",
+"transition":"50"
+}
+```
