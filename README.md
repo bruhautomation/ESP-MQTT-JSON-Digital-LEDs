@@ -41,6 +41,7 @@ light:
     state_topic: "home/RGBStrip1"
     command_topic: "home/RGBStrip1/set"
     effect: true
+	white_value: true
     effect_list:
       - solid    
       - Music - L2R
