@@ -544,7 +544,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
     realBlue = 0;
   }
 
-  Serial.println(effect);
+  //Serial.println(effect);
 
   startFade = true;
   inFade = false; // Kill the current fade
@@ -605,8 +605,9 @@ bool processJson(char* message) {
       twinklecounter = 0; //manage twinklecounter
     }
 
-    if (root.containsKey("transition")) {
-      transitionTime = root["transition"];
+    if (root.containsKey("white_value")) {
+      transitionTime = map(root["white_value"], 0, 255, 1, 150);
+      //transitionTime = root["transition"];
     }
     else if ( effectString == "solid") {
       transitionTime = 0;
@@ -651,8 +652,8 @@ bool processJson(char* message) {
       twinklecounter = 0; //manage twinklecounter
     }
 
-    if (root.containsKey("transition")) {
-      transitionTime = root["transition"];
+    if (root.containsKey("white_value")) {
+      transitionTime = map(root["white_value"], 0, 255, 1, 150);
     }
     else if ( effectString == "solid") {
       transitionTime = 0;
@@ -679,7 +680,7 @@ void sendState() {
 
   root["brightness"] = brightness;
   root["effect"] = effectString.c_str();
-  root["transition"] = transitionTime;
+  root["white_value"] = map(transitionTime, 0, 150, 1, 255);
 
   char buffer[root.measureLength() + 1];
   root.printTo(buffer, sizeof(buffer));
@@ -1814,7 +1815,7 @@ void visualize_music(int LEDDirection)
   if (k < 0) // RESET COLOR WHEEL
     k = 255;
 
-   // REMOVE LEDs
+  // REMOVE LEDs
   decay_check++;
   if (decay_check > decay)
   {
