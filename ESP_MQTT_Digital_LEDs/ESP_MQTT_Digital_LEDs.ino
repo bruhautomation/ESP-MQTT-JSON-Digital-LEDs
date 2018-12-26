@@ -6,6 +6,21 @@
   |  |_)  | |  |\  \-.|  `--'  | |  |  |  |     /  _____  \ |  `--'  |     |  |     |  `--'  | |  |  |  |  /  _____  \   |  |     |  | |  `--'  | |  |\   |
   |______/  | _| `.__| \______/  |__|  |__|    /__/     \__\ \______/      |__|      \______/  |__|  |__| /__/     \__\  |__|     |__|  \______/  |__| \__|
 
+     __  __           _ _  __ _          _   _              ______   __ _    _   _ _        _    ____ ____   _   _ _____ _____ 
+    |  \/  | ___   __| (_)/ _(_) ___  __| | | |__  _   _   / ___\ \ / // \  | \ | | |      / \  | __ ) ___| | \ | | ____|_   _|
+    | |\/| |/ _ \ / _` | | |_| |/ _ \/ _` | | '_ \| | | | | |    \ V // _ \ |  \| | |     / _ \ |  _ \___ \ |  \| |  _|   | |  
+    | |  | | (_) | (_| | |  _| |  __/ (_| | | |_) | |_| | | |___  | |/ ___ \| |\  | |___ / ___ \| |_) |__) || |\  | |___  | |  
+    |_|  |_|\___/ \__,_|_|_| |_|\___|\__,_| |_.__/ \__, |  \____| |_/_/   \_\_| \_|_____/_/   \_\____/____(_)_| \_|_____| |_|  
+                                                    |___/                                                    
+  VERSION 1.0
+                                                                                                                                                    
+  This is a modified and combined version created by Fma965, it gathers many effects found around the internet including Bruhs, Bkpsu and The-Red-Team. Most of the credit goes to Bruh for the base code.
+  - https://github.com/bruhautomation/ESP-MQTT-JSON-Digital-LEDs/blob/master/ESP_MQTT_Digital_LEDs/ESP_MQTT_Digital_LEDs.ino
+  - https://github.com/bkpsu/ESP-MQTT-JSON-Digital-LEDs/blob/master/ESP_MQTT_Digital_LEDs/ESP_MQTT_Digital_LEDs_w_JSON.ino
+  - https://github.com/the-red-team/Arduino-FastLED-Music-Visualizer/blob/master/music_visualizer.ino
+
+  - You can find all information relating to this script at https://github.com/cyanlabs/ESP-MQTT-JSON-Digital-LEDs
+  
   Thanks much to @corbanmailloux for providing a great framework for implementing flash/fade with HomeAssistant https://github.com/corbanmailloux/esp-mqtt-rgb-led
   
   To use this code you will need the following dependancies: 
@@ -17,8 +32,14 @@
   - You will also need to download the follow libraries by going to Sketch -> Include Libraries -> Manage Libraries
       - FastLED 
       - PubSubClient
-      - ArduinoJSON
+      - ArduinoJSON (5.12.0)
+
+  - You will need to connect the Addressable RGB strip to Pin D3 on the NodeMCU or change the pin definition below.
+  - You can use a microphone or directly wire the output of the a speaker port on a amp to your NodeMCU, wire GND (black speaker wire) to a GND and the Possitive (usually red speaker wire) to A0 on the NodeMCU
+  - For a list of the effects that can be used check GitHub
 */
+
+//#define FASTLED_INTERRUPT_RETRY_COUNT 0
 
 #include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
@@ -28,28 +49,24 @@
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
 
-
-
 /************ WIFI and MQTT Information (CHANGE THESE FOR YOUR SETUP) ******************/
-const char* ssid = "YourSSID"; //type your WIFI information inside the quotes
-const char* password = "YourWIFIpassword";
-const char* mqtt_server = "your.MQTT.server.ip";
-const char* mqtt_username = "yourMQTTusername";
-const char* mqtt_password = "yourMQTTpassword";
+const char* ssid = "SSID"; //type your WIFI information inside the quotes
+const char* password = "WIFIPASSWORD"; //
+const char* mqtt_server = "10.0.0.2";
+const char* mqtt_username = "homeassistant";
+const char* mqtt_password = "MQTTPASSWORD";
 const int mqtt_port = 1883;
 
 
-
 /**************************** FOR OTA **************************************************/
-#define SENSORNAME "porch" //change this to whatever you want to call your device
-#define OTApassword "yourOTApassword" //the password you will need to enter to upload remotely via the ArduinoIDE
+#define SENSORNAME "RGBStrip" //change this to whatever you want to call your device
+
+#define OTApassword "OTAPassword" //the password you will need to enter to upload remotely via the ArduinoIDE
 int OTAport = 8266;
 
-
-
 /************* MQTT TOPICS (change these topics as you wish)  **************************/
-const char* light_state_topic = "bruh/porch";
-const char* light_set_topic = "bruh/porch/set";
+const char* light_state_topic = "home/RGBStrip1";
+const char* light_set_topic = "home/RGBStrip1/set";
 
 const char* on_cmd = "ON";
 const char* off_cmd = "OFF";
@@ -57,17 +74,14 @@ const char* effect = "solid";
 String effectString = "solid";
 String oldeffectString = "solid";
 
-
-
 /****************************************FOR JSON***************************************/
 const int BUFFER_SIZE = JSON_OBJECT_SIZE(10);
 #define MQTT_MAX_PACKET_SIZE 512
 
-
-
 /*********************************** FastLED Defintions ********************************/
-#define NUM_LEDS    186
-#define DATA_PIN    5
+#define NUM_LEDS    64
+
+#define DATA_PIN    3
 //#define CLOCK_PIN 5
 #define CHIPSET     WS2811
 #define COLOR_ORDER BRG
@@ -81,7 +95,219 @@ byte green = 255;
 byte blue = 255;
 byte brightness = 255;
 
+/**************************** MUSIC VISUALIZER **************************************************/
+#define UPDATES_PER_SECOND 100
+#define MUSIC_SENSITIVITY 4
 
+// AUDIO INPUT SETUP
+int audio = A0;
+
+// STANDARD VISUALIZER VARIABLES
+int loop_max = 0;
+int k = 255; // COLOR WHEEL POSITION
+int wheel_speed = 3; // COLOR WHEEL SPEED
+int decay = 0; // HOW MANY MS BEFORE ONE LIGHT DECAY
+int decay_check = 0;
+long pre_react = 0; // NEW SPIKE CONVERSION
+long react = 0; // NUMBER OF LEDs BEING LIT
+long post_react = 0; // OLD SPIKE CONVERSION
+
+///////////////DrZzs Palettes for custom BPM effects//////////////////////////
+///////////////Add any custom palettes here//////////////////////////////////
+
+// Gradient palette "bhw2_thanks_gp", originally from
+// http://soliton.vm.bytemark.co.uk/pub/cpt-city/bhw/bhw2/tn/bhw2_thanks.png.index.html
+// converted for FastLED with gammas (2.6, 2.2, 2.5)
+// Size: 36 bytes of program space.
+
+DEFINE_GRADIENT_PALETTE( bhw2_thanks_gp ) {
+    0,   9,  5,  1,
+   48,  25,  9,  1,
+   76, 137, 27,  1,
+   96,  98, 42,  1,
+  124, 144, 79,  1,
+  153,  98, 42,  1,
+  178, 137, 27,  1,
+  211,  23,  9,  1,
+  255,   9,  5,  1};
+
+// Gradient palette "bhw2_redrosey_gp", originally from
+// http://soliton.vm.bytemark.co.uk/pub/cpt-city/bhw/bhw2/tn/bhw2_redrosey.png.index.html
+// converted for FastLED with gammas (2.6, 2.2, 2.5)
+// Size: 32 bytes of program space.
+
+DEFINE_GRADIENT_PALETTE( bhw2_redrosey_gp ) {
+    0, 103,  1, 10,
+   33, 109,  1, 12,
+   76, 159,  5, 48,
+  119, 175, 55,103,
+  127, 175, 55,103,
+  178, 159,  5, 48,
+  221, 109,  1, 12,
+  255, 103,  1, 10};
+
+// Gradient palette "bluered_gp", originally from
+// http://soliton.vm.bytemark.co.uk/pub/cpt-city/h5/tn/bluered.png.index.html
+// converted for FastLED with gammas (2.6, 2.2, 2.5)
+// Size: 12 bytes of program space.
+
+DEFINE_GRADIENT_PALETTE( bluered_gp ) {
+    0,   0,  0,255,
+  127, 255,255,255,
+  255, 255,  0,  0};
+
+// Gradient palette "bhw2_xmas_gp", originally from
+// http://soliton.vm.bytemark.co.uk/pub/cpt-city/bhw/bhw2/tn/bhw2_xmas.png.index.html
+// converted for FastLED with gammas (2.6, 2.2, 2.5)
+// Size: 48 bytes of program space.
+
+DEFINE_GRADIENT_PALETTE( bhw2_xmas_gp ) {
+    0,   0, 12,  0,
+   40,   0, 55,  0,
+   66,   1,117,  2,
+   77,   1, 84,  1,
+   81,   0, 55,  0,
+  119,   0, 12,  0,
+  153,  42,  0,  0,
+  181, 121,  0,  0,
+  204, 255, 12,  8,
+  224, 121,  0,  0,
+  244,  42,  0,  0,
+  255,  42,  0,  0};
+
+// Gradient palette "bhw2_xc_gp", originally from
+// http://soliton.vm.bytemark.co.uk/pub/cpt-city/bhw/bhw2/tn/bhw2_xc.png.index.html
+// converted for FastLED with gammas (2.6, 2.2, 2.5)
+// Size: 28 bytes of program space.
+
+DEFINE_GRADIENT_PALETTE( bhw2_xc_gp ) {
+    0,   4,  2,  9,
+   58,  16,  0, 47,
+  122,  24,  0, 16,
+  158, 144,  9,  1,
+  183, 179, 45,  1,
+  219, 220,114,  2,
+  255, 234,237,  1};
+
+// Gradient palette "bhw1_04_gp", originally from
+// http://soliton.vm.bytemark.co.uk/pub/cpt-city/bhw/bhw1/tn/bhw1_04.png.index.html
+// converted for FastLED with gammas (2.6, 2.2, 2.5)
+// Size: 20 bytes of program space.
+
+DEFINE_GRADIENT_PALETTE( bhw1_04_gp ) {
+    0, 229,227,  1,
+   15, 227,101,  3,
+  142,  40,  1, 80,
+  198,  17,  1, 79,
+  255,   0,  0, 45};
+
+// Gradient palette "bhw4_051_gp", originally from
+// http://soliton.vm.bytemark.co.uk/pub/cpt-city/bhw/bhw4/tn/bhw4_051.png.index.html
+// converted for FastLED with gammas (2.6, 2.2, 2.5)
+// Size: 36 bytes of program space.
+
+// Gradient palette "fs2006_gp", originally from
+// http://soliton.vm.bytemark.co.uk/pub/cpt-city/cl/tn/fs2006.png.index.html
+// converted for FastLED with gammas (2.6, 2.2, 2.5)
+// Size: 56 bytes of program space.
+
+DEFINE_GRADIENT_PALETTE( fs2006_gp ) {
+    0,   0, 49,  5,
+   34,   0, 49,  5,
+   34,  79,168, 66,
+   62,  79,168, 66,
+   62, 252,168, 92,
+  103, 252,168, 92,
+  103, 234, 81, 29,
+  143, 234, 81, 29,
+  143, 222, 30,  1,
+  184, 222, 30,  1,
+  184,  90, 13,  1,
+  238,  90, 13,  1,
+  238, 210,  1,  1,
+  255, 210,  1,  1};
+
+
+DEFINE_GRADIENT_PALETTE( bhw4_051_gp ) {
+    0,   1,  1,  4,
+   28,  16, 24, 77,
+   66,  35, 87,160,
+  101, 125,187,205,
+  127, 255,233, 13,
+  145, 125,187,205,
+  193,  28, 70,144,
+  224,  14, 19, 62,
+  255,   1,  1,  4};
+
+// Gradient palette "blue_g2_5_gp", originally from
+// http://soliton.vm.bytemark.co.uk/pub/cpt-city/go2/webtwo/tn/blue-g2-5.png.index.html
+// converted for FastLED with gammas (2.6, 2.2, 2.5)
+// Size: 16 bytes of program space.
+
+DEFINE_GRADIENT_PALETTE( blue_g2_5_gp ) {
+    0,   2,  6, 63,
+  127,   2,  9, 67,
+  255,   255, 255, 115,
+  255,   255, 255, 0};
+
+// Gradient palette "bhw3_41_gp", originally from
+// http://soliton.vm.bytemark.co.uk/pub/cpt-city/bhw/bhw3/tn/bhw3_41.png.index.html
+// converted for FastLED with gammas (2.6, 2.2, 2.5)
+// Size: 36 bytes of program space.
+
+DEFINE_GRADIENT_PALETTE( bhw3_41_gp ) {
+    0,   0,  0, 45,
+   71,   7, 12,255,
+   76,  75, 91,255,
+   76, 255,255,255,
+   81, 255,255,255,
+  178, 255,255,255,
+  179, 255, 55, 45,
+  196, 255,  0,  0,
+  255,  42,  0,  0};
+
+DEFINE_GRADIENT_PALETTE( test_gp ) {
+    0,  255,  0,  0, // Red
+// 32,  171, 85,  0, // Orange
+// 64,  171,171,  0, // Yellow
+// 96,    0,255,  0, // Green
+//128,    0,171, 85, // Aqua
+  160,    0,  0,255, // Blue
+//192,   85,  0,171, // Purple
+//224,  171,  0, 85, // Pink
+//255,  255,  0,  0};// and back to Red
+};  
+
+// Gradient palette "bhw2_greenman_gp", originally from
+// http://soliton.vm.bytemark.co.uk/pub/cpt-city/bhw/bhw2/tn/bhw2_greenman.png.index.html
+// converted for FastLED with gammas (2.6, 2.2, 2.5)
+// Size: 12 bytes of program space.
+
+DEFINE_GRADIENT_PALETTE( bhw2_greenman_gp ) {
+    0,   1, 22,  1,
+  130,   1,168,  2,
+  255,   1, 22,  1};
+
+// Gradient palette "PSU_gp" 
+// converted for FastLED with gammas (2.6, 2.2, 2.5)
+// Size: 12 bytes of program space.
+
+DEFINE_GRADIENT_PALETTE( PSU_gp ) {
+    0,   4, 30, 66,
+  127,  30, 64, 124,
+  255, 255,255,255};
+
+// Gradient palette "Orange_to_Purple_gp", originally from
+// http://soliton.vm.bytemark.co.uk/pub/cpt-city/ds/icons/tn/Orange-to-Purple.png.index.html
+// converted for FastLED with gammas (2.6, 2.2, 2.5)
+// Size: 12 bytes of program space.
+
+DEFINE_GRADIENT_PALETTE( Orange_to_Purple_gp ) {
+    0, 208, 50,  1,
+  127, 146, 27, 45,
+  255,  97, 12,178};
+
+/* END PALETTE DEFINITIONS */
 
 /******************************** GLOBALS for fade/flash *******************************/
 bool stateOn = false;
@@ -89,6 +315,7 @@ bool startFade = false;
 bool onbeforeflash = false;
 unsigned long lastLoop = 0;
 int transitionTime = 0;
+int delayMultiplier = 1;
 int effectSpeed = 0;
 bool inFade = false;
 int loopCount = 0;
@@ -104,8 +331,6 @@ byte flashGreen = green;
 byte flashBlue = blue;
 byte flashBrightness = brightness;
 
-
-
 /********************************** GLOBALS for EFFECTS ******************************/
 //RAINBOW
 uint8_t thishue = 0;                                          // Starting hue value.
@@ -113,6 +338,11 @@ uint8_t deltahue = 10;
 
 //CANDYCANE
 CRGBPalette16 currentPalettestriped; //for Candy Cane
+CRGBPalette16 hailPalettestriped; //for Hail
+CRGBPalette16 ThxPalettestriped; //for Thanksgiving
+CRGBPalette16 HalloweenPalettestriped; //for Halloween
+CRGBPalette16 HJPalettestriped; //for Holly Jolly
+CRGBPalette16 IndPalettestriped; //for Independence
 CRGBPalette16 gPal; //for fire
 
 //NOISE
@@ -152,7 +382,14 @@ int lightningcounter = 0;
 int idex = 0;                //-LED INDEX (0 to NUM_LEDS-1
 int TOP_INDEX = int(NUM_LEDS / 2);
 int thissat = 255;           //-FX LOOPS DELAY VAR
+
+//////////////////add thishue__ for Police All custom effects here/////////////////////////////////////////////////////////
+/////////////////use hsv Hue number for one color, for second color change "thishue__ + __" in the setEffect section//////
+
 uint8_t thishuepolice = 0;
+uint8_t thishuehail = 183;
+uint8_t thishueLovey = 0;    
+
 int antipodal_index(int i) {
   int iN = i + TOP_INDEX;
   if (i >= TOP_INDEX) {
@@ -169,6 +406,16 @@ bool gReverseDirection = false;
 //BPM
 uint8_t gHue = 0;
 
+//CHRISTMAS
+int toggle = 0;
+
+//RANDOM STARS
+const int NUM_STARS = NUM_LEDS/10;
+static int stars[NUM_STARS];
+
+//SINE HUE
+int hue_index = 0;
+int led_index = 0;
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -182,6 +429,12 @@ void setup() {
   FastLED.addLeds<CHIPSET, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS);
 
   setupStripedPalette( CRGB::Red, CRGB::Red, CRGB::White, CRGB::White); //for CANDY CANE
+  setupThxPalette( CRGB::OrangeRed, CRGB::Olive, CRGB::Maroon, CRGB::Maroon); //for Thanksgiving
+  setupHailPalette( CRGB::Blue, CRGB::Blue, CRGB::White, CRGB::White); //for HAIL
+  setupHalloweenPalette( CRGB::DarkOrange, CRGB::DarkOrange, CRGB::Indigo, CRGB::Indigo); //for Halloween
+  setupHJPalette( CRGB::Red, CRGB::Red, CRGB::Green, CRGB::Green); //for Holly Jolly
+  setupIndPalette( CRGB::FireBrick, CRGB::Cornsilk, CRGB::MediumBlue, CRGB::MediumBlue); //for Independence
+  
   gPal = HeatColors_p; //for FIRE
 
   setup_wifi();
@@ -216,9 +469,6 @@ void setup() {
   ArduinoOTA.begin();
 
   Serial.println("Ready");
-  Serial.print("IP Address: ");
-  Serial.println(WiFi.localIP());
-
 }
 
 
@@ -243,7 +493,7 @@ void setup_wifi() {
 
   Serial.println("");
   Serial.println("WiFi connected");
-  Serial.println("IP address: ");
+  Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
 }
 
@@ -385,7 +635,7 @@ bool processJson(char* message) {
     if (root.containsKey("color_temp")) {
       //temp comes in as mireds, need to convert to kelvin then to RGB
       int color_temp = root["color_temp"];
-      unsigned int kelvin  = MILLION / color_temp;
+      unsigned int kelvin  = 1000000 / color_temp; //MILLION / color_temp;
       
       temp2rgb(kelvin);
       
@@ -429,15 +679,13 @@ void sendState() {
 
   root["brightness"] = brightness;
   root["effect"] = effectString.c_str();
-
+  root["transition"] = transitionTime;
 
   char buffer[root.measureLength() + 1];
   root.printTo(buffer, sizeof(buffer));
 
   client.publish(light_state_topic, buffer, true);
 }
-
-
 
 /********************************** START RECONNECT*****************************************/
 void reconnect() {
@@ -460,8 +708,6 @@ void reconnect() {
   }
 }
 
-
-
 /********************************** START Set Color*****************************************/
 void setColor(int inR, int inG, int inB) {
   for (int i = 0; i < NUM_LEDS; i++) {
@@ -481,8 +727,6 @@ void setColor(int inR, int inG, int inB) {
   Serial.println(inB);
 }
 
-
-
 /********************************** START MAIN LOOP*****************************************/
 void loop() {
 
@@ -497,12 +741,247 @@ void loop() {
     return;
   }
 
-
-
   client.loop();
 
   ArduinoOTA.handle();
 
+/////////////////////////////////////////  
+//////Music Visualizer//////////////
+///////////////////////////////////////
+
+  // Left to Right
+  if(effectString == "Music - L2R") {
+      visualize_music(1);
+  }
+  // Middle Out
+  if(effectString == "Music - Middle") {
+      visualize_music(2);
+  }
+  // Custom for Fma965
+  if(effectString == "Music - Fma965") {
+      visualize_music(3);
+  }
+
+/////////////////////////////////////////  
+//////DrZzs custom effects//////////////
+///////////////////////////////////////
+
+  if (effectString == "Christmas") {                                  // colored stripes pulsing in Shades of GREEN and RED 
+    uint8_t BeatsPerMinute = 62;
+    CRGBPalette16 palette = bhw2_xmas_gp;
+    uint8_t beat = beatsin8( BeatsPerMinute, 64, 255);
+    for( int i = 0; i < NUM_LEDS; i++) { //9948
+    leds[i] = ColorFromPalette(palette, gHue+(i*2), beat-gHue+(i*10));
+  }
+    if (transitionTime == 0 or transitionTime == NULL) {
+      transitionTime = 30;
+    }
+    delayMultiplier = 1;
+    showleds();  
+}
+  
+  if (effectString == "St Patty") {                                  // colored stripes pulsing in Shades of GREEN 
+    uint8_t BeatsPerMinute = 62;
+    CRGBPalette16 palette = bhw2_greenman_gp;
+    uint8_t beat = beatsin8( BeatsPerMinute, 64, 255);
+    for( int i = 0; i < NUM_LEDS; i++) { //9948
+    leds[i] = ColorFromPalette(palette, gHue+(i*2), beat-gHue+(i*10));
+  }
+    if (transitionTime == 0 or transitionTime == NULL) {
+      transitionTime = 30;
+    }
+    delayMultiplier = 1;
+    showleds();  
+}
+
+  if (effectString == "Valentine") {                                  // colored stripes pulsing in Shades of PINK and RED 
+    uint8_t BeatsPerMinute = 62;
+    CRGBPalette16 palette = bhw2_redrosey_gp;
+    uint8_t beat = beatsin8( BeatsPerMinute, 64, 255);
+    for( int i = 0; i < NUM_LEDS; i++) { //9948
+    leds[i] = ColorFromPalette(palette, gHue+(i*2), beat-gHue+(i*10));
+  }
+    if (transitionTime == 0 or transitionTime == NULL) {
+      transitionTime = 30;
+    }
+    delayMultiplier = 1;
+    showleds();  
+}
+
+  if (effectString == "Turkey Day") {                                  // colored stripes pulsing in Shades of Brown and ORANGE 
+    uint8_t BeatsPerMinute = 62;
+    CRGBPalette16 palette = bhw2_thanks_gp;
+    uint8_t beat = beatsin8( BeatsPerMinute, 64, 255);
+    for( int i = 0; i < NUM_LEDS; i++) { //9948
+    leds[i] = ColorFromPalette(palette, gHue+(i*2), beat-gHue+(i*10));
+  }
+    if (transitionTime == 0 or transitionTime == NULL) {
+      transitionTime = 30;
+    }
+    delayMultiplier = 1;
+    showleds();  
+}
+
+  if (effectString == "Thanksgiving") {                                  // colored stripes pulsing in Shades of Red and ORANGE and Green 
+    static uint8_t startIndex = 0;
+    startIndex = startIndex + 1; /* higher = faster motion */
+
+    fill_palette( leds, NUM_LEDS,
+                  startIndex, 16, /* higher = narrower stripes */
+                  ThxPalettestriped, 255, LINEARBLEND);
+    if (transitionTime == 0 or transitionTime == NULL) {
+      transitionTime = 30;
+    }
+    delayMultiplier = 1;
+    showleds();  
+}
+  
+  if (effectString == "USA") {                                  // colored stripes pulsing in Shades of Red White & Blue 
+    uint8_t BeatsPerMinute = 62;
+    CRGBPalette16 palette = bhw3_41_gp;
+    uint8_t beat = beatsin8( BeatsPerMinute, 64, 255);
+    for( int i = 0; i < NUM_LEDS; i++) { //9948
+    leds[i] = ColorFromPalette(palette, gHue+(i*2), beat-gHue+(i*10));
+  }
+    if (transitionTime == 0 or transitionTime == NULL) {
+      transitionTime = 30;
+    }
+    delayMultiplier = 1;
+    showleds();  
+}
+
+  if (effectString == "Independence") {                        // colored stripes of Red White & Blue
+    static uint8_t startIndex = 0;
+    startIndex = startIndex + 1; /* higher = faster motion */
+
+    fill_palette( leds, NUM_LEDS,
+                  startIndex, 16, /* higher = narrower stripes */
+                  IndPalettestriped, 255, LINEARBLEND);
+    if (transitionTime == 0 or transitionTime == NULL) {
+      transitionTime = 30;
+    }
+    delayMultiplier = 1;
+    showleds();  
+}
+
+
+  if (effectString == "Halloween") {                                  // colored stripes pulsing in Shades of Purple and Orange
+    uint8_t BeatsPerMinute = 62;
+    CRGBPalette16 palette = Orange_to_Purple_gp;
+    uint8_t beat = beatsin8( BeatsPerMinute, 64, 255);
+    for( int i = 0; i < NUM_LEDS; i++) { //9948
+    leds[i] = ColorFromPalette(palette, gHue+(i*2), beat-gHue+(i*10));
+  }
+    if (transitionTime == 0 or transitionTime == NULL) {
+      transitionTime = 30;
+    }
+    delayMultiplier = 1;
+    showleds();  
+}
+
+  if (effectString == "Go Lions") {                                  // colored stripes pulsing in Shades of <strike>Maize and</strike> Blue & White (FTFY DrZZZ :-P)
+    uint8_t BeatsPerMinute = 62;
+    CRGBPalette16 palette = PSU_gp;
+    uint8_t beat = beatsin8( BeatsPerMinute, 64, 255);
+    for( int i = 0; i < NUM_LEDS; i++) { //9948
+    leds[i] = ColorFromPalette(palette, gHue+(i*2), beat-gHue+(i*10));
+  }
+    if (transitionTime == 0 or transitionTime == NULL) {
+      transitionTime = 30;
+    }
+    delayMultiplier = 1;
+    showleds();  
+}
+
+  if (effectString == "Hail") {
+    static uint8_t startIndex = 0;
+    startIndex = startIndex + 1; /* higher = faster motion */
+
+    fill_palette( leds, NUM_LEDS,
+                  startIndex, 16, /* higher = narrower stripes */
+                  hailPalettestriped, 255, LINEARBLEND);
+    if (transitionTime == 0 or transitionTime == NULL) {
+      transitionTime = 30;
+    }
+    delayMultiplier = 1;
+    showleds();  
+}
+  
+  if (effectString == "Touchdown") {                 //<strike>Maize and</strike> Blue & White with POLICE ALL animation
+    idex++;
+    if (idex >= NUM_LEDS) {
+      idex = 0;
+    }
+    int idexY = idex;
+    int idexB = antipodal_index(idexY);
+    int thathue = ( thishuehail + 64) % 255;
+    leds[idexY] = CRGB::Blue; //CHSV(thishuehail, thissat, 255);
+    leds[idexB] = CRGB::White; //CHSV(thathue, thissat, 255);
+    if (transitionTime == 0 or transitionTime == NULL) {
+      transitionTime = 30;
+    }
+    delayMultiplier = 1;
+    showleds();  
+  }
+
+  if (effectString == "Punkin") {
+    static uint8_t startIndex = 0;
+    startIndex = startIndex + 1; /* higher = faster motion */
+
+    fill_palette( leds, NUM_LEDS,
+                  startIndex, 16, /* higher = narrower stripes */
+                  HalloweenPalettestriped, 255, LINEARBLEND);
+    if (transitionTime == 0 or transitionTime == NULL) {
+      transitionTime = 30;
+    }
+    delayMultiplier = 1;
+    showleds();  
+  }
+
+    if (effectString == "Lovey Day") {                 //Valentine's Day colors (TWO COLOR SOLID)
+    idex++;
+    if (idex >= NUM_LEDS) {
+      idex = 0;
+    }
+    int idexR = idex;
+    int idexB = antipodal_index(idexR);
+    int thathue = (thishueLovey + 244) % 255;
+    leds[idexR] = CHSV(thishueLovey, thissat, 255);
+    leds[idexB] = CHSV(thathue, thissat, 255);
+    if (transitionTime == 0 or transitionTime == NULL) {
+      transitionTime = 30;
+    }
+    delayMultiplier = 1;
+    showleds();  
+  }
+
+  if (effectString == "Holly Jolly") {
+    static uint8_t startIndex = 0;
+    startIndex = startIndex + 1; /* higher = faster motion */
+
+    fill_palette( leds, NUM_LEDS,
+                  startIndex, 16, /* higher = narrower stripes */
+                  HJPalettestriped, 255, LINEARBLEND);
+    if (transitionTime == 0 or transitionTime == NULL) {
+      transitionTime = 30;
+    }
+    delayMultiplier = 1;
+    showleds();                  
+  }
+
+/////////////////End DrZzs effects/////////////
+///////////////////////////////////////////////
+
+////////Place your custom effects below////////////
+
+
+
+
+/////////////end custom effects////////////////
+
+///////////////////////////////////////////////
+/////////fastLED & Bruh effects///////////////
+/////////////////////////////////////////////
 
   //EFFECT BPM
   if (effectString == "bpm") {
@@ -515,6 +994,7 @@ void loop() {
     if (transitionTime == 0 or transitionTime == NULL) {
       transitionTime = 30;
     }
+    delayMultiplier = 1;
     showleds();
   }
 
@@ -529,6 +1009,7 @@ void loop() {
     if (transitionTime == 0 or transitionTime == NULL) {
       transitionTime = 0;
     }
+    delayMultiplier = 1;
     showleds();
   }
 
@@ -541,6 +1022,7 @@ void loop() {
     if (transitionTime == 0 or transitionTime == NULL) {
       transitionTime = 30;
     }
+    delayMultiplier = 1;
     showleds();
   }
 
@@ -553,6 +1035,7 @@ void loop() {
       // Set the i'th led to red
       leds[i] = CHSV(hue++, 255, 255);
       // Show the leds
+      delayMultiplier = 1;
       showleds();
       // now that we've shown the leds, reset the i'th led to black
       // leds[i] = CRGB::Black;
@@ -564,6 +1047,7 @@ void loop() {
       // Set the i'th led to red
       leds[i] = CHSV(hue++, 255, 255);
       // Show the leds
+      delayMultiplier = 1;
       showleds();
       // now that we've shown the leds, reset the i'th led to black
       // leds[i] = CRGB::Black;
@@ -586,7 +1070,8 @@ void loop() {
 
     if (transitionTime == 0 or transitionTime == NULL) {
       transitionTime = 30;
-    }
+    }    
+    delayMultiplier = 1;
     showleds();
   }
 
@@ -597,6 +1082,7 @@ void loop() {
     if (transitionTime == 0 or transitionTime == NULL) {
       transitionTime = 150;
     }
+    delayMultiplier = 2;
     showleds();
   }
 
@@ -610,6 +1096,7 @@ void loop() {
     if (transitionTime == 0 or transitionTime == NULL) {
       transitionTime = 30;
     }
+    delayMultiplier = 1;
     showleds();
   }
 
@@ -623,6 +1110,7 @@ void loop() {
     if (transitionTime == 0 or transitionTime == NULL) {
       transitionTime = 130;
     }
+    delayMultiplier = 1;
     showleds();
   }
 
@@ -634,8 +1122,8 @@ void loop() {
       FastLED.clear();
       FastLED.show();
     }
-    ledstart = random8(NUM_LEDS);           // Determine starting location of flash
-    ledlen = random8(NUM_LEDS - ledstart);  // Determine length of flash (not to go beyond NUM_LEDS-1)
+    ledstart = random16(NUM_LEDS);           // Determine starting location of flash
+    ledlen = random16(NUM_LEDS - ledstart);  // Determine length of flash (not to go beyond NUM_LEDS-1)
     for (int flashCounter = 0; flashCounter < random8(3, flashes); flashCounter++) {
       if (flashCounter == 0) dimmer = 5;    // the brightness of the leader is scaled down by a factor of 5
       else dimmer = random8(1, 3);          // return strokes are brighter than the leader
@@ -651,6 +1139,7 @@ void loop() {
     if (transitionTime == 0 or transitionTime == NULL) {
       transitionTime = 0;
     }
+    delayMultiplier = 1;
     showleds();
   }
 
@@ -669,6 +1158,7 @@ void loop() {
     if (transitionTime == 0 or transitionTime == NULL) {
       transitionTime = 30;
     }
+    delayMultiplier = 1;
     showleds();
   }
 
@@ -695,6 +1185,7 @@ void loop() {
     if (transitionTime == 0 or transitionTime == NULL) {
       transitionTime = 30;
     }
+    delayMultiplier = 1;
     showleds();
   }
 
@@ -707,6 +1198,7 @@ void loop() {
     if (transitionTime == 0 or transitionTime == NULL) {
       transitionTime = 130;
     }
+    delayMultiplier = 1;
     showleds();
   }
 
@@ -720,11 +1212,12 @@ void loop() {
     if (transitionTime == 0 or transitionTime == NULL) {
       transitionTime = 130;
     }
+    delayMultiplier = 1;
     showleds();
   }
 
 
-  //EFFECT SIENLON
+  //EFFECT SINELON
   if (effectString == "sinelon") {
     fadeToBlackBy( leds, NUM_LEDS, 20);
     int pos = beatsin16(13, 0, NUM_LEDS - 1);
@@ -732,6 +1225,7 @@ void loop() {
     if (transitionTime == 0 or transitionTime == NULL) {
       transitionTime = 150;
     }
+    delayMultiplier = 1;
     showleds();
   }
 
@@ -760,12 +1254,142 @@ void loop() {
     if (transitionTime == 0 or transitionTime == NULL) {
       transitionTime = 0;
     }
+    delayMultiplier = 1;
     showleds();
   }
 
+  //EFFECT CHRISTMAS ALTERNATE
+  if (effectString == "christmas alternate") {
+     for (int i = 0; i < NUM_LEDS; i++) {
+        if ((toggle + i) % 2 == 0) {
+          leds[i] = CRGB::Crimson;
+        }
+        else {
+          leds[i] = CRGB::DarkGreen;
+        }
+      }
+      toggle=(toggle + 1) % 2;
+      if (transitionTime == 0 or transitionTime == NULL) {
+      transitionTime = 130;
+      }
+      delayMultiplier = 30;
+      showleds();  
+      fadeall(); 
+      //delay(200);
+  }
+
+  //EFFECT RANDOM STARS
+  if (effectString == "random stars") {
+    fadeUsingColor( leds, NUM_LEDS, CRGB::Blue);
+    int pos = random16(NUM_LEDS);
+    leds[pos] += CRGB(realRed + random8(64), realGreen, realBlue);
+    addGlitter(80);
+    if (transitionTime == 0 or transitionTime == NULL) {
+      transitionTime = 30;
+    }
+    delayMultiplier = 6;
+    //delay(60);
+    showleds();
+           
+  }
+
+//EFFECT "Sine Hue"
+  if (effectString == "sine hue") {
+      static uint8_t hue_index = 0;
+      static uint8_t led_index = 0;
+      if (led_index >= NUM_LEDS) {  //Start off at 0 if the led_index was incremented past the segment size in some other effect
+        led_index = 0;
+      }
+      for (int i = 0; i < NUM_LEDS; i = i + 1)
+      {
+        leds[i] = CHSV(hue_index, 255, 255 - int(abs(sin(float(i + led_index) / NUM_LEDS * 2 * 3.14159) * 255)));
+      }
+
+      led_index++,hue_index++;
+
+     if (hue_index >= 255) {
+        hue_index = 0;
+      }
+      delayMultiplier = 2;
+      showleds();        
+  }
+
+
+//EFFECT "Full Hue"
+  if (effectString == "full hue") {
+      static uint8_t hue_index = 0;
+      fill_solid(leds, NUM_LEDS, CHSV(hue_index, 255, 255));
+      hue_index++;
+
+     if (hue_index >= 255) {
+        hue_index = 0;
+      }
+      delayMultiplier = 2;
+      showleds();        
+  }
+  
+
+//EFFECT "Breathe"
+  if (effectString == "breathe") {
+      static bool toggle;
+      static uint8_t brightness_index = 0;
+      fill_solid(leds, NUM_LEDS,CHSV(thishue,255,brightness_index));
+      if (brightness_index >= 255) {
+        toggle=0;        
+      }
+      else if (brightness_index <= 0)
+      {
+        toggle=1;
+      }
+
+      if (toggle)
+      {
+        brightness_index++;
+      }
+      else
+      {
+       brightness_index--;
+      }
+      
+      delayMultiplier = 2;
+      showleds();        
+  }
+
+
+//EFFECT "Hue Breathe"
+  if (effectString == "hue breathe") {
+      static uint8_t hue_index = 0;
+      static bool toggle = 1;
+      static uint8_t brightness_index = 0;
+      fill_solid(leds, NUM_LEDS, CHSV(hue_index, 255, brightness_index));
+      if (brightness_index >= 255) {
+        toggle=0;
+        hue_index=hue_index+10;
+      }
+      else if (brightness_index <= 0)
+      {
+        toggle=1;
+        hue_index=hue_index+10;
+      }
+
+      if (toggle)
+      {
+        brightness_index++;
+      }
+      else
+      {
+       brightness_index--;
+      }
+      
+      if (hue_index >= 255) {
+        hue_index = 0;
+      }
+      
+      delayMultiplier = 2;
+      showleds();        
+  }
 
   EVERY_N_MILLISECONDS(10) {
-
     nblendPaletteTowardPalette(currentPalette, targetPalette, maxChanges);  // FOR NOISE ANIMATIon
     {
       gHue++;
@@ -782,6 +1406,7 @@ void loop() {
       if (transitionTime == 0 or transitionTime == NULL) {
         transitionTime = 0;
       }
+      delayMultiplier = 1;
       showleds();
     }
 
@@ -810,11 +1435,10 @@ void loop() {
       if (transitionTime == 0 or transitionTime == NULL) {
         transitionTime = 30;
       }
+      delayMultiplier = 1;
       showleds();
     }
-
   }
-
 
   EVERY_N_SECONDS(5) {
     targetPalette = CRGBPalette16(CHSV(random8(), 255, random8(128, 255)), CHSV(random8(), 255, random8(128, 255)), CHSV(random8(), 192, random8(128, 255)), CHSV(random8(), 255, random8(128, 255)));
@@ -896,7 +1520,6 @@ void loop() {
   }
 }
 
-
 /**************************** START TRANSITION FADER *****************************************/
 // From https://www.arduino.cc/en/Tutorial/ColorCrossfader
 /* BELOW THIS LINE IS THE MATH -- YOU SHOULDN'T NEED TO CHANGE THIS FOR THE BASICS
@@ -956,6 +1579,8 @@ int calculateVal(int step, int val, int i) {
   return val;
 }
 
+////////////////////////place setup__Palette and __Palettestriped custom functions here - for Candy Cane effects ///////////////// 
+///////You can use up to 4 colors and change the pattern of A's AB's B's and BA's as you like//////////////
 
 
 /**************************** START STRIPLED PALETTE *****************************************/
@@ -966,6 +1591,42 @@ void setupStripedPalette( CRGB A, CRGB AB, CRGB B, CRGB BA) {
                           );
 }
 
+void setupHailPalette( CRGB A, CRGB AB, CRGB B, CRGB BA)
+{
+  hailPalettestriped = CRGBPalette16(
+                            A, A, A, A, A, A, A, A, B, B, B, B, B, B, B, B
+                          );
+}
+
+void setupHJPalette( CRGB A, CRGB AB, CRGB B, CRGB BA)
+{
+  HJPalettestriped = CRGBPalette16(
+                            A, A, A, A, A, A, A, A, B, B, B, B, B, B, B, B
+                          );
+}
+
+void setupIndPalette( CRGB A, CRGB AB, CRGB B, CRGB BA)
+{
+  IndPalettestriped = CRGBPalette16(
+                            A, A, A, A, A, AB, AB, AB, AB, AB, B, B, B, B, B, B
+                          );
+}
+
+void setupThxPalette( CRGB A, CRGB AB, CRGB B, CRGB BA)
+{
+  ThxPalettestriped = CRGBPalette16(
+                            A, A, A, A, A, A, A, AB, AB, AB, B, B, B, B, B, B
+                          );
+}
+
+void setupHalloweenPalette( CRGB A, CRGB AB, CRGB B, CRGB BA)
+{
+  HalloweenPalettestriped = CRGBPalette16(
+                            A, A, A, A, A, A, A, A, B, B, B, B, B, B, B, B
+                          );
+}
+
+////////////////////////////////////////////////////////
 
 
 /********************************** START FADE************************************************/
@@ -974,8 +1635,6 @@ void fadeall() {
     leds[i].nscale8(250);  //for CYCLon
   }
 }
-
-
 
 /********************************** START FIRE **********************************************/
 void Fire2012WithPalette()
@@ -1015,8 +1674,6 @@ void Fire2012WithPalette()
   }
 }
 
-
-
 /********************************** START ADD GLITTER *********************************************/
 void addGlitter( fract8 chanceOfGlitter)
 {
@@ -1024,8 +1681,6 @@ void addGlitter( fract8 chanceOfGlitter)
     leds[ random16(NUM_LEDS) ] += CRGB::White;
   }
 }
-
-
 
 /********************************** START ADD GLITTER COLOR ****************************************/
 void addGlitterColor( fract8 chanceOfGlitter, int red, int green, int blue)
@@ -1035,8 +1690,6 @@ void addGlitterColor( fract8 chanceOfGlitter, int red, int green, int blue)
   }
 }
 
-
-
 /********************************** START SHOW LEDS ***********************************************/
 void showleds() {
 
@@ -1045,8 +1698,8 @@ void showleds() {
   if (stateOn) {
     FastLED.setBrightness(brightness);  //EXECUTE EFFECT COLOR
     FastLED.show();
-    if (transitionTime > 0 && transitionTime < 130) {  //Sets animation speed based on receieved value
-      FastLED.delay(1000 / transitionTime);
+    if (transitionTime > 0 && transitionTime < 250) {  //Sets animation speed based on receieved value
+      FastLED.delay(transitionTime / 10 * delayMultiplier); //1000 / transitionTime);
       //delay(10*transitionTime);
     }
   }
@@ -1108,4 +1761,115 @@ void temp2rgb(unsigned int kelvin) {
             blue = tmp_blue;
         }
     }
+}
+
+/**************************** MUSIC VISUALIZER **************************************************/
+// https://github.com/the-red-team/Arduino-FastLED-Music-Visualizer/blob/master/music_visualizer.ino
+// Modified by Fma965
+
+CRGB Scroll(int pos) {
+  CRGB color (0,0,0);
+  if(pos < 85) {
+    color.g = 0;
+    color.r = ((float)pos / 85.0f) * 255.0f;
+    color.b = 255 - color.r;
+  } else if(pos < 170) {
+    color.g = ((float)(pos - 85) / 85.0f) * 255.0f;
+    color.r = 255 - color.g;
+    color.b = 0;
+  } else if(pos < 256) {
+    color.b = ((float)(pos - 170) / 85.0f) * 255.0f;
+    color.g = 255 - color.b;
+    color.r = 1;
+  }
+  return color;
+}
+
+void visualize_music(int LEDDirection)
+{
+  int audio_input = analogRead(audio) * MUSIC_SENSITIVITY;
+
+  if (audio_input > 0)
+  {
+    if(LEDDirection == 1) {
+          pre_react = ((long)NUM_LEDS * (long)audio_input) / 1023L; // TRANSLATE AUDIO LEVEL TO NUMBER OF LEDs
+    } else if(LEDDirection == 2) {
+          pre_react = ((long)NUM_LEDS/2 * (long)audio_input) / 1023L; // TRANSLATE AUDIO LEVEL TO NUMBER OF LEDs
+    } else if(LEDDirection == 3) {
+          pre_react = ((long)NUM_LEDS/4 * (long)audio_input) / 1023L; // TRANSLATE AUDIO LEVEL TO NUMBER OF LEDs
+    }
+
+    if (pre_react > react) // ONLY ADJUST LEVEL OF LED IF LEVEL HIGHER THAN CURRENT LEVEL
+      react = pre_react;
+  }
+  if(LEDDirection == 1) {
+    RainbowL2R(); // Left to Right
+  } else if(LEDDirection == 2) {
+    RainbowMiddleOut(); //Middle Out
+  } else if(LEDDirection == 3) {
+    RainbowFma965(); //Custom setup for Fma965
+  }
+  
+  k = k - wheel_speed; // SPEED OF COLOR WHEEL
+  if (k < 0) // RESET COLOR WHEEL
+    k = 255;
+
+  // REMOVE LEDs
+  decay_check++;
+  if (decay_check > decay)
+  {
+    decay_check = 0;
+    if (react > 0)
+      react--;
+  }
+  //delay(1);
+}
+
+// https://github.com/NeverPlayLegit/Rainbow-Fader-FastLED/blob/master/rainbow.ino
+void RainbowL2R() 
+{
+  for(int i = NUM_LEDS - 1; i >= 0; i--) {
+    if (i < react)
+      leds[i] = Scroll((i * 256 / 50 + k) % 256);
+    else
+      leds[i] = CRGB(0, 0, 0);      
+  }
+  FastLED.show(); 
+}
+
+void RainbowMiddleOut()
+{
+  for(int i = 0; i < NUM_LEDS/2; i++) {
+    if (i < react) {
+      leds[NUM_LEDS/2+i] = Scroll((i * 256 / NUM_LEDS + k) % 256);
+      leds[NUM_LEDS/2-i] = Scroll((i * 256 / NUM_LEDS + k) % 256);
+    }
+    else {
+      leds[i] = CRGB(0, 0, 0);    
+    }
+  }
+  FastLED.show(); 
+}
+
+void RainbowFma965()
+{
+   for(int i = 0; i < 21; i++) {
+    if (i < react) {
+      leds[42-i] = Scroll((i * 256 / NUM_LEDS + k) % 256);       
+      leds[42+i] = Scroll((i * 256 / NUM_LEDS + k) % 256);
+    } else {
+      leds[42-i] = CRGB(0, 0, 0);    
+      leds[42+i] = CRGB(0, 0, 0);
+    } 
+  }
+  for(int i = 0; i < 12; i++) {
+    if (i < react) {
+      leds[10+i] = Scroll((i * 256 / NUM_LEDS + k) % 256); 
+      leds[10-i] = Scroll((i * 256 / NUM_LEDS + k) % 256); 
+    } else {
+      leds[10+i] = CRGB(0, 0, 0);
+      leds[10-i] = CRGB(0, 0, 0);
+    } 
+  }
+  FastLED.show(); 
 }
