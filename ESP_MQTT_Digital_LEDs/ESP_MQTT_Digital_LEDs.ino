@@ -97,7 +97,7 @@ byte brightness = 255;
 
 /**************************** MUSIC VISUALIZER **************************************************/
 #define UPDATES_PER_SECOND 100
-#define MUSIC_SENSITIVITY 4
+#define MUSIC_SENSITIVITY 5
 
 // AUDIO INPUT SETUP
 int audio = A0;
@@ -1814,7 +1814,7 @@ void visualize_music(int LEDDirection)
   if (k < 0) // RESET COLOR WHEEL
     k = 255;
 
-  // REMOVE LEDs
+   // REMOVE LEDs
   decay_check++;
   if (decay_check > decay)
   {
@@ -1822,7 +1822,11 @@ void visualize_music(int LEDDirection)
     if (react > 0)
       react--;
   }
-  delay(transitionTime);
+  if (transitionTime <= 50) {
+    delay(25);
+  } else {
+    delay(transitionTime / 2);
+  }
 }
 
 // https://github.com/NeverPlayLegit/Rainbow-Fader-FastLED/blob/master/rainbow.ino
