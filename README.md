@@ -43,9 +43,9 @@ light:
     effect: true
     effect_list:
       - solid    
-      - musicVisualizer (965)
-      - musicVisualizer (L2R)
-      - musicVisualizer (Middle)
+      - Music - L2R
+      - Music - Middle
+      - Music - Fma965
       - bpm
       - candy cane  
       - confetti  

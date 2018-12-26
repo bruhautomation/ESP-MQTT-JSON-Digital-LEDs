@@ -1845,7 +1845,8 @@ void RainbowMiddleOut()
       leds[NUM_LEDS/2-i] = Scroll((i * 256 / NUM_LEDS + k) % 256);
     }
     else {
-      leds[i] = CRGB(0, 0, 0);    
+      leds[NUM_LEDS/2-i] = CRGB(0, 0, 0);    
+      leds[NUM_LEDS/2+i] = CRGB(0, 0, 0);  
     }
   }
   FastLED.show(); 
