@@ -1822,7 +1822,7 @@ void visualize_music(int LEDDirection)
     if (react > 0)
       react--;
   }
-  //delay(1);
+  delay(transitionTime);
 }
 
 // https://github.com/NeverPlayLegit/Rainbow-Fader-FastLED/blob/master/rainbow.ino
