@@ -39,7 +39,7 @@
   - For a list of the effects that can be used check GitHub
 */
 
-//#define FASTLED_INTERRUPT_RETRY_COUNT 0
+define FASTLED_INTERRUPT_RETRY_COUNT 0
 
 #include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
@@ -605,11 +605,11 @@ bool processJson(char* message) {
       twinklecounter = 0; //manage twinklecounter
     }
 
-    if (root.containsKey("white_value")) {
+    if (root.containsKey("white_value") && effect != "solid") {
       transitionTime = map(root["white_value"], 0, 255, 1, 150);
       //transitionTime = root["transition"];
     }
-    else if ( effectString == "solid") {
+    else if ( effect == "solid") {
       transitionTime = 0;
     }
 
@@ -652,10 +652,11 @@ bool processJson(char* message) {
       twinklecounter = 0; //manage twinklecounter
     }
 
-    if (root.containsKey("white_value")) {
+    if (root.containsKey("white_value") && effect != "solid") {
       transitionTime = map(root["white_value"], 0, 255, 1, 150);
+      //transitionTime = root["transition"];
     }
-    else if ( effectString == "solid") {
+    else if ( effect == "solid") {
       transitionTime = 0;
     }
 
@@ -680,7 +681,7 @@ void sendState() {
 
   root["brightness"] = brightness;
   root["effect"] = effectString.c_str();
-  root["white_value"] = map(transitionTime, 0, 150, 1, 255);
+  root["white_value"] = map(transitionTime, 1,150, 0, 255);
 
   char buffer[root.measureLength() + 1];
   root.printTo(buffer, sizeof(buffer));
