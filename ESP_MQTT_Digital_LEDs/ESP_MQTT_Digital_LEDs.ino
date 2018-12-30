@@ -39,7 +39,7 @@
   - For a list of the effects that can be used check GitHub
 */
 
-define FASTLED_INTERRUPT_RETRY_COUNT 0
+#define FASTLED_INTERRUPT_RETRY_COUNT 0
 
 #include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
