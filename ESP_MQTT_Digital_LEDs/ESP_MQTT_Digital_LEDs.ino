@@ -50,6 +50,7 @@ int OTAport = 8266;
 /************* MQTT TOPICS (change these topics as you wish)  **************************/
 const char* light_state_topic = "bruh/porch";
 const char* light_set_topic = "bruh/porch/set";
+const char* LWT_topic = "bruh/porch/LWT";
 
 const char* on_cmd = "ON";
 const char* off_cmd = "OFF";
@@ -445,9 +446,10 @@ void reconnect() {
   while (!client.connected()) {
     Serial.print("Attempting MQTT connection...");
     // Attempt to connect
-    if (client.connect(SENSORNAME, mqtt_username, mqtt_password)) {
+    if (client.connect(SENSORNAME, mqtt_username, mqtt_password, LWT_topic, 0, 1, "Offline")) {
       Serial.println("connected");
       client.subscribe(light_set_topic);
+      client.publish(LWT_topic, "Online", true);
       setColor(0, 0, 0);
       sendState();
     } else {
