@@ -10,9 +10,9 @@ I would suggest using the same versions of libraries to minimize potential isues
 - Flash
 - Fade
 - Transitions
-- Effects with Animation Speed
+- Effects with Animation Speed controlled with White_Value for ease of use
 - Over-the-Air (OTA) Upload from the ArduinoIDE!
-- Music Visualizer (Left to Right and Middle)
+- Music Visualizer (Various effects), sensitivity controlled by White_Value
 - DrZZs Effects
 - bkpsu Effects
 
@@ -34,18 +34,26 @@ This code also supports remote uploading to the ESP8266 using Arduino's OTA libr
 
 #### Home Assistant Configuration YAML
 ````
+mqtt:
+  broker: your.mqtt.ip.address
+  port: 1883
+  client_id: home-assistant-1
+  username: YOURUSERNAME
+  password: YOURPASSWORD
+
 light:
   - platform: mqtt
     schema: json
-    name: "RGB Light Strip"
+    name: "RGB Light Strip 1"
     state_topic: "home/RGBStrip1"
     command_topic: "home/RGBStrip1/set"
+    white_value: true
     effect: true
-	white_value: true
     effect_list:
       - solid    
       - Music - L2R
       - Music - Middle
+      - Music - LR2M
       - Music - Fma965
       - bpm
       - candy cane  
@@ -84,7 +92,12 @@ light:
       - Touchdown
       - Punkin
       - Lovey Day
-      - Holly Jolly
+      - Holly Jolly      
+    brightness: true
+    flash: true
+    rgb: true
+    optimistic: false
+    qos: 0
 ````
 
 #### Example MQTT Payload
@@ -145,7 +158,7 @@ Flash The Light - light.turn_on
 Call Rainbow Effect with Slow Animation Speed - light.turn_on
 ```
 {"entity_id":"light.porch_strip",
-"transition":"50",
+"white_value":"50",
 "brightness":255,
 "effect":"rainbow"
 }
@@ -154,6 +167,6 @@ Call Rainbow Effect with Slow Animation Speed - light.turn_on
 Fade the Light Off Over 5 Seconds - light.turn_off
 ```
 {"entity_id":"light.porch_strip",
-"transition":"50"
+"white_value":"50"
 }
 ```
