@@ -67,6 +67,7 @@ int OTAport = 8266;
 /************* MQTT TOPICS (change these topics as you wish)  **************************/
 const char* light_state_topic = "home/RGBStrip1";
 const char* light_set_topic = "home/RGBStrip1/set";
+const char* light_set_topic_group = "home/LEDStrip_Group1/set";
 
 const char* on_cmd = "ON";
 const char* off_cmd = "OFF";
@@ -97,7 +98,9 @@ byte brightness = 255;
 
 /**************************** MUSIC VISUALIZER **************************************************/
 #define UPDATES_PER_SECOND 100
-#define MUSIC_SENSITIVITY 5
+
+#define MUSIC_SENSITIVITY 4
+//To set a fixed MUSIC_SENSITIVITY you must un comment the line "int audio_input = analogRead(audio) * MUSIC_SENSITIVITY;" near the bottom.
 
 // AUDIO INPUT SETUP
 int audio = A0;
@@ -605,11 +608,10 @@ bool processJson(char* message) {
       twinklecounter = 0; //manage twinklecounter
     }
 
-    if (root.containsKey("white_value") && effect != "solid") {
+    if (root.containsKey("white_value")) {
       transitionTime = map(root["white_value"], 0, 255, 1, 150);
-      //transitionTime = root["transition"];
     }
-    else if ( effect == "solid") {
+    else if ( effectString == "solid") {
       transitionTime = 0;
     }
 
@@ -652,14 +654,12 @@ bool processJson(char* message) {
       twinklecounter = 0; //manage twinklecounter
     }
 
-    if (root.containsKey("white_value") && effect != "solid") {
+    if (root.containsKey("white_value")) {
       transitionTime = map(root["white_value"], 0, 255, 1, 150);
-      //transitionTime = root["transition"];
     }
-    else if ( effect == "solid") {
+    else if ( effectString == "solid") {
       transitionTime = 0;
     }
-
   }
 
   return true;
@@ -698,6 +698,7 @@ void reconnect() {
     if (client.connect(SENSORNAME, mqtt_username, mqtt_password)) {
       Serial.println("connected");
       client.subscribe(light_set_topic);
+      client.subscribe(light_set_topic_group);
       setColor(0, 0, 0);
       sendState();
     } else {
@@ -762,6 +763,10 @@ void loop() {
   // Custom for Fma965
   if(effectString == "Music - Fma965") {
       visualize_music(3);
+  }
+  // Out to Middle
+  if(effectString == "Music - LR2M") {
+      visualize_music(4);
   }
 
 /////////////////////////////////////////  
@@ -1789,18 +1794,18 @@ CRGB Scroll(int pos) {
 
 void visualize_music(int LEDDirection)
 {
-  int audio_input = analogRead(audio) * MUSIC_SENSITIVITY;
-
+  //int audio_input = analogRead(audio) * MUSIC_SENSITIVITY;
+int audio_input = analogRead(audio) * map(transitionTime, 1, 150, 2, 7);
   if (audio_input > 0)
   {
     if(LEDDirection == 1) {
           pre_react = ((long)NUM_LEDS * (long)audio_input) / 1023L; // TRANSLATE AUDIO LEVEL TO NUMBER OF LEDs
-    } else if(LEDDirection == 2) {
+    } else if(LEDDirection == 2 || LEDDirection == 4) {
           pre_react = ((long)NUM_LEDS/2 * (long)audio_input) / 1023L; // TRANSLATE AUDIO LEVEL TO NUMBER OF LEDs
     } else if(LEDDirection == 3) {
           pre_react = ((long)NUM_LEDS/4 * (long)audio_input) / 1023L; // TRANSLATE AUDIO LEVEL TO NUMBER OF LEDs
     }
-
+    
     if (pre_react > react) // ONLY ADJUST LEVEL OF LED IF LEVEL HIGHER THAN CURRENT LEVEL
       react = pre_react;
   }
@@ -1810,6 +1815,8 @@ void visualize_music(int LEDDirection)
     RainbowMiddleOut(); //Middle Out
   } else if(LEDDirection == 3) {
     RainbowFma965(); //Custom setup for Fma965
+  } else if(LEDDirection == 4) {
+    RainbowOutMiddle(); //Out to Middle
   }
   
   k = k - wheel_speed; // SPEED OF COLOR WHEEL
@@ -1848,12 +1855,26 @@ void RainbowMiddleOut()
   for(int i = 0; i < NUM_LEDS/2; i++) {
     if (i < react) {
       leds[NUM_LEDS/2+i] = Scroll((i * 256 / NUM_LEDS + k) % 256);
-      leds[NUM_LEDS/2-i] = Scroll((i * 256 / NUM_LEDS + k) % 256);
+      leds[NUM_LEDS/2-i-1] = Scroll((i * 256 / NUM_LEDS + k) % 256);
     }
     else {
-      leds[NUM_LEDS/2-i] = CRGB(0, 0, 0);    
-      leds[NUM_LEDS/2+i] = CRGB(0, 0, 0);  
+      leds[NUM_LEDS/2+i] = CRGB(0, 0, 0);
+      leds[NUM_LEDS/2-i-1] = CRGB(0, 0, 0);      
     }
+  }
+  FastLED.show(); 
+}
+
+void RainbowOutMiddle()
+{
+  for(int i = 0; i < NUM_LEDS/2+1; i++) {
+    if (i < react) {
+      leds[0+i] = Scroll((i * 256 / NUM_LEDS + k) % 256);       
+      leds[NUM_LEDS-i] = Scroll((i * 256 / NUM_LEDS + k) % 256);
+    } else {
+      leds[0+i] = CRGB(0, 0, 0);    
+      leds[NUM_LEDS-i] = CRGB(0, 0, 0);
+    } 
   }
   FastLED.show(); 
 }
@@ -1862,20 +1883,20 @@ void RainbowFma965()
 {
    for(int i = 0; i < 21; i++) {
     if (i < react) {
-      leds[42-i] = Scroll((i * 256 / NUM_LEDS + k) % 256);       
+      leds[42-i-1] = Scroll((i * 256 / NUM_LEDS + k) % 256);       
       leds[42+i] = Scroll((i * 256 / NUM_LEDS + k) % 256);
     } else {
-      leds[42-i] = CRGB(0, 0, 0);    
+      leds[42-i-1] = CRGB(0, 0, 0);    
       leds[42+i] = CRGB(0, 0, 0);
     } 
   }
   for(int i = 0; i < 12; i++) {
     if (i < react) {
       leds[10+i] = Scroll((i * 256 / NUM_LEDS + k) % 256); 
-      leds[10-i] = Scroll((i * 256 / NUM_LEDS + k) % 256); 
+      leds[10-i-1] = Scroll((i * 256 / NUM_LEDS + k) % 256); 
     } else {
       leds[10+i] = CRGB(0, 0, 0);
-      leds[10-i] = CRGB(0, 0, 0);
+      leds[10-i-1] = CRGB(0, 0, 0);
     } 
   }
   FastLED.show(); 

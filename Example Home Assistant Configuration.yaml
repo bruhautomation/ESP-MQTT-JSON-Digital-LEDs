@@ -6,12 +6,19 @@ mqtt:
   password: YOURPASSWORD
 
 light:
-  - platform: mqtt_json
-    name: "Porch Strip"
-    state_topic: "bruh/porch"
-    command_topic: "bruh/porch/set"
+  - platform: mqtt
+    schema: json
+    name: "RGB Light Strip 1"
+    state_topic: "home/RGBStrip1"
+    command_topic: "home/RGBStrip1/set"
+    white_value: true
     effect: true
     effect_list:
+      - solid    
+      - Music - L2R
+      - Music - Middle
+      - Music - LR2M
+      - Music - Fma965
       - bpm
       - candy cane  
       - confetti  
@@ -27,32 +34,31 @@ light:
       - rainbow  
       - rainbow with glitter  
       - ripple  
-      - sinelon  
-      - solid  
-      - twinkle  
+      - sinelon    
+      - twinkle
+      - sinelon
+      - sine hue
+      - full hue
+      - breathe
+      - hue breathe
+      - Christmas
+      - christmas alternate
+      - random stars
+      - St Patty
+      - Valentine
+      - Turkey Day
+      - Thanksgiving
+      - USA
+      - Independence
+      - Halloween
+      - Go Lions
+      - Hail
+      - Touchdown
+      - Punkin
+      - Lovey Day
+      - Holly Jolly      
     brightness: true
     flash: true
     rgb: true
     optimistic: false
     qos: 0
-
-input_slider:
-  porch_animation_speed:
-    name: Porch Animation Speed
-    initial: 150
-    min: 1
-    max: 150
-    step: 10
-
-automation: 
-  - alias: "Porch Animation Speed"
-    initial_state: True
-    hide_entity: False
-    trigger:
-      - platform: state
-        entity_id: input_slider.porch_animation_speed
-    action:
-      - service: mqtt.publish
-        data_template:
-          topic: "bruh/porch/set"
-          payload: '{"transition":{{ trigger.to_state.state | int }}}'
