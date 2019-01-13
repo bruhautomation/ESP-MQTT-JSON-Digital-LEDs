@@ -47,6 +47,7 @@ light:
     name: "RGB Light Strip 1"
     state_topic: "home/RGBStrip1"
     command_topic: "home/RGBStrip1/set"
+	availability_topic: "home/RGBStrip1/LWT"
     white_value: true
     effect: true
     effect_list:

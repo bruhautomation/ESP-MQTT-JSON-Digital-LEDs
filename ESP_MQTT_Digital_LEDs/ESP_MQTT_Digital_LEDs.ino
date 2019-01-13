@@ -68,6 +68,7 @@ int OTAport = 8266;
 const char* light_state_topic = "home/RGBStrip1";
 const char* light_set_topic = "home/RGBStrip1/set";
 const char* light_set_topic_group = "home/LEDStrip_Group1/set";
+const char* LWT_topic = "home/RGBStrip1/LWT";
 
 const char* on_cmd = "ON";
 const char* off_cmd = "OFF";
@@ -695,10 +696,11 @@ void reconnect() {
   while (!client.connected()) {
     Serial.print("Attempting MQTT connection...");
     // Attempt to connect
-    if (client.connect(SENSORNAME, mqtt_username, mqtt_password)) {
+    if (client.connect(SENSORNAME, mqtt_username, mqtt_password, LWT_topic, 0, 1, "offline")) {
       Serial.println("connected");
       client.subscribe(light_set_topic);
       client.subscribe(light_set_topic_group);
+      client.publish(LWT_topic, "online", true);
       setColor(0, 0, 0);
       sendState();
     } else {
@@ -1901,3 +1903,5 @@ void RainbowFma965()
   }
   FastLED.show(); 
 }
+
+
