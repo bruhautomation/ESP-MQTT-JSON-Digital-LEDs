@@ -132,6 +132,7 @@ light:
 
 
 #### Wiring Diagram
+PLEASE NOTE I USE PIN D3 IN MY CODE, NOT D5
 ![alt text](https://github.com/bruhautomation/ESP-MQTT-Digital-LEDs/blob/master/ESP%20MQTT%20Digital%20LEDs%20Wiring%20Diagram.png?raw=true "Wiring Diagram")
 
 
