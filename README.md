@@ -42,19 +42,19 @@ mqtt:
   password: YOURPASSWORD
 
 light:
-  - platform: mqtt
+    - platform: mqtt
     schema: json
     name: "RGB Light Strip 1"
     state_topic: "home/RGBStrip1"
     command_topic: "home/RGBStrip1/set"
-	availability_topic: "home/RGBStrip1/LWT"
+    rgb: true
+    availability_topic: "home/RGBStrip1/LWT"
     white_value: true
     effect: true
     effect_list:
       - solid    
       - Music - L2R
       - Music - Middle
-      - Music - LR2M
       - Music - Fma965
       - bpm
       - candy cane  
@@ -70,8 +70,7 @@ light:
       - police one  
       - rainbow  
       - rainbow with glitter  
-      - ripple  
-      - sinelon    
+      - ripple      
       - twinkle
       - sinelon
       - sine hue
@@ -95,8 +94,6 @@ light:
       - Lovey Day
       - Holly Jolly      
     brightness: true
-    flash: true
-    rgb: true
     optimistic: false
     qos: 0
 ````
