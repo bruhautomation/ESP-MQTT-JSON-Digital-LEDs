@@ -82,3 +82,9 @@ Fade the Light Off Over 5 Seconds - light.turn_off
 "transition":"50"
 }
 ```
+
+Add these lines to void setup to set default color and brightness on power up
+```
+  setColor(255, 136, 12);
+  FastLED.setBrightness(80);
+```
