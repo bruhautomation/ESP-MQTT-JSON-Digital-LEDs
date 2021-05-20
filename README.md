@@ -1,3 +1,5 @@
+`This repo is no longer updated as i have switched to using https://github.com/Aircoookie/WLED 
+
 This is a modified version of https://github.com/bkpsu/ESP-MQTT-JSON-Digital-LEDs which is a modified version of https://github.com/bruhautomation/ESP-MQTT-JSON-Digital-LEDs
 
 The code covered in this repository utilizes [Home Assistant's MQTT Light Component](https://home-assistant.io/components/light.mqtt_json/) and an ESP8266 microcontroller. 
